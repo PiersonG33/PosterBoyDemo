@@ -1,12 +1,12 @@
-import type { BoardSnapshot, DrawingData, NotePlacement } from '../types'
+import type { BoardSnapshot, DrawingData, NotePlacement, PinPosition } from '../types'
 
 export interface BoardGateway {
   load(): Promise<BoardSnapshot>
   subscribe(onChange: (snapshot: BoardSnapshot) => void): () => void
   createText(text: string, placement: NotePlacement): Promise<BoardSnapshot>
   createDrawing(drawing: DrawingData, placement: NotePlacement): Promise<BoardSnapshot>
-  addPin(noteId: string): Promise<BoardSnapshot>
-  removePin(noteId: string): Promise<BoardSnapshot>
+  addPin(position: PinPosition): Promise<BoardSnapshot>
+  removePin(pinId: string): Promise<BoardSnapshot>
   removeNote(noteId: string): Promise<BoardSnapshot>
 }
 

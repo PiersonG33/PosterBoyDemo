@@ -14,6 +14,8 @@ This first implementation covers the static and local-interaction phases of the 
 - text composer with a 500-character limit;
 - pointer-event drawing editor with undo and clear;
 - validated stroke JSON rendered into application-generated SVG previews;
+- board-positioned pins that can secure overlapping notes, with collision checks and inline removal confirmation;
+- click-to-remove confirmation for unpinned notes;
 - 20-action, 10-minute local budget;
 - pin, unpin, and removal rules;
 - persistence and cross-tab updates through browser storage.
@@ -27,7 +29,7 @@ npm install
 npm run dev
 ```
 
-Then open the URL printed by Vite. The prototype deliberately stores its current board in local browser storage; clear the `poster-boy-board-v1` key to restore the seed board.
+Then open the URL printed by Vite. The prototype deliberately stores its current board in local browser storage; clear the `poster-boy-board-v3` key to restore the seed board.
 
 ## Checks
 

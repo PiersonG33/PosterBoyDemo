@@ -4,24 +4,28 @@ import {
   MAX_ACTIVE_NOTES,
   MAX_TEXT_LENGTH,
 } from '../constants'
-import { seedNotes } from '../data/seedNotes'
+import { seedNotes, seedPins } from '../data/seedNotes'
 import { validateDrawing } from '../drawing/validation'
+import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from './pinPlacement'
 import type {
   ActionBudget,
   BoardNote,
+  BoardPin,
   BoardSnapshot,
   DrawingData,
   NotePlacement,
+  PinPosition,
 } from '../types'
 import { BoardActionError, type BoardGateway } from './BoardGateway'
 
-const STORAGE_KEY = 'poster-boy-board-v1'
+const STORAGE_KEY = 'poster-boy-board-v3'
 const ACTOR_KEY = 'poster-boy-visitor-v1'
 const CHANNEL_NAME = 'poster-boy-board-events'
 
 interface StoredBoard {
-  version: 1
+  version: 3
   notes: BoardNote[]
+  pins: BoardPin[]
   budgets: Record<string, ActionBudget>
 }
 
@@ -33,6 +37,7 @@ const freshBudget = (now = Date.now()): ActionBudget => ({
 })
 
 const cloneSeedNotes = () => structuredClone(seedNotes)
+const cloneSeedPins = () => structuredClone(seedPins)
 
 export class LocalBoardGateway implements BoardGateway {
   private readonly actorId: string
@@ -79,15 +84,14 @@ export class LocalBoardGateway implements BoardGateway {
       throw new BoardActionError(`Keep notes under ${MAX_TEXT_LENGTH} characters.`)
     }
 
-    return this.mutate((notes) => {
-      this.assertBoardHasRoom(notes)
-      notes.push({
+    return this.mutate((board) => {
+      this.assertBoardHasRoom(board.notes)
+      board.notes.push({
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         contentType: 'text',
         textContent: trimmed,
         drawingData: null,
-        pinCount: 0,
         removedAt: null,
         ...placement,
       })
@@ -98,52 +102,56 @@ export class LocalBoardGateway implements BoardGateway {
     const validationError = validateDrawing(drawing)
     if (validationError) throw new BoardActionError(validationError)
 
-    return this.mutate((notes) => {
-      this.assertBoardHasRoom(notes)
-      notes.push({
+    return this.mutate((board) => {
+      this.assertBoardHasRoom(board.notes)
+      board.notes.push({
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         contentType: 'drawing',
         textContent: null,
         drawingData: drawing,
-        pinCount: 0,
         removedAt: null,
         ...placement,
       })
     })
   }
 
-  async addPin(noteId: string): Promise<BoardSnapshot> {
-    return this.mutate((notes) => {
-      const note = this.findActiveNote(notes, noteId)
-      note.pinCount += 1
+  async addPin(position: PinPosition): Promise<BoardSnapshot> {
+    return this.mutate((board) => {
+      if (!isPinPositionAvailable(board.pins, position)) {
+        throw new BoardActionError('Place this pin a little farther from the others.')
+      }
+      if (!board.notes.some((note) => pinTouchesNote(position, note))) {
+        throw new BoardActionError('Pins need to touch at least one note.')
+      }
+      board.pins.push({ id: crypto.randomUUID(), ...position })
     })
   }
 
-  async removePin(noteId: string): Promise<BoardSnapshot> {
-    return this.mutate((notes) => {
-      const note = this.findActiveNote(notes, noteId)
-      if (note.pinCount === 0) throw new BoardActionError('This note has no pins to remove.')
-      note.pinCount -= 1
+  async removePin(pinId: string): Promise<BoardSnapshot> {
+    return this.mutate((board) => {
+      const pinIndex = board.pins.findIndex((pin) => pin.id === pinId)
+      if (pinIndex === -1) throw new BoardActionError('That pin is no longer on the board.')
+      board.pins.splice(pinIndex, 1)
     })
   }
 
   async removeNote(noteId: string): Promise<BoardSnapshot> {
-    return this.mutate((notes) => {
-      const note = this.findActiveNote(notes, noteId)
-      if (note.pinCount > 0) throw new BoardActionError('Remove the pins before taking this note down.')
+    return this.mutate((board) => {
+      const note = this.findActiveNote(board.notes, noteId)
+      if (noteHasPins(note, board.pins)) throw new BoardActionError('Remove the pins before taking this note down.')
       note.removedAt = new Date().toISOString()
     })
   }
 
-  private mutate(change: (notes: BoardNote[]) => void): BoardSnapshot {
+  private mutate(change: (board: StoredBoard) => void): BoardSnapshot {
     const board = this.readBoard()
     const budget = this.getCurrentBudget(board)
     if (budget.used >= budget.limit) {
       throw new BoardActionError('You are out of actions. Your supply will refill soon.')
     }
 
-    change(board.notes)
+    change(board)
     budget.used += 1
     board.budgets[this.actorId] = budget
     const snapshot = this.toSnapshot(board, budget)
@@ -174,14 +182,16 @@ export class LocalBoardGateway implements BoardGateway {
 
   private readBoard(): StoredBoard {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return { version: 1, notes: cloneSeedNotes(), budgets: {} }
+    if (!stored) return { version: 3, notes: cloneSeedNotes(), pins: cloneSeedPins(), budgets: {} }
 
     try {
       const parsed = JSON.parse(stored) as StoredBoard
-      if (parsed.version !== 1 || !Array.isArray(parsed.notes)) throw new Error('Invalid board')
+      if (parsed.version !== 3 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
+        throw new Error('Invalid board')
+      }
       return parsed
     } catch {
-      return { version: 1, notes: cloneSeedNotes(), budgets: {} }
+      return { version: 3, notes: cloneSeedNotes(), pins: cloneSeedPins(), budgets: {} }
     }
   }
 
@@ -195,6 +205,7 @@ export class LocalBoardGateway implements BoardGateway {
       notes: structuredClone(board.notes.filter((note) =>
         note.removedAt === null || Date.now() - Date.parse(note.removedAt) < 600,
       )),
+      pins: structuredClone(board.pins),
       budget: { ...budget },
     }
   }

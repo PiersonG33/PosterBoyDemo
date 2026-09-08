@@ -19,6 +19,7 @@ export default function App() {
     removeNote,
   } = useBoard()
   const [isPlacing, setIsPlacing] = useState(false)
+  const [isPinning, setIsPinning] = useState(false)
   const [selection, setSelection] = useState<PlacementSelection | null>(null)
 
   useEffect(() => {
@@ -28,16 +29,17 @@ export default function App() {
   }, [clearMessage, message])
 
   useEffect(() => {
-    if (!isPlacing && !selection) return
+    if (!isPlacing && !isPinning && !selection) return
     const cancelWithEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isPosting) {
         setIsPlacing(false)
+        setIsPinning(false)
         setSelection(null)
       }
     }
     window.addEventListener('keydown', cancelWithEscape)
     return () => window.removeEventListener('keydown', cancelWithEscape)
-  }, [isPlacing, isPosting, selection])
+  }, [isPinning, isPlacing, isPosting, selection])
 
   if (!snapshot) {
     return (
@@ -60,13 +62,27 @@ export default function App() {
         <div className="header-actions">
           <ActionMeter budget={snapshot.budget} />
           <button
-            className={`add-button ${isPlacing ? 'add-button--cancel' : ''}`}
+            className={`tool-button pin-tool ${isPinning ? 'is-active' : ''}`}
+            type="button"
+            onClick={() => {
+              setIsPlacing(false)
+              setIsPinning((active) => !active)
+            }}
+            disabled={remaining === 0 || isPosting || Boolean(selection)}
+            aria-label={isPinning ? 'Cancel placing a pin' : 'Place a pin'}
+            title={isPinning ? 'Cancel placing a pin' : 'Place a pin'}
+          >
+            <span className="tool-pin-visual" aria-hidden="true" />
+          </button>
+          <button
+            className={`tool-button add-button ${isPlacing || selection ? 'is-active' : ''}`}
             type="button"
             onClick={() => {
               if (isPlacing || selection) {
                 setIsPlacing(false)
                 setSelection(null)
               } else {
+                setIsPinning(false)
                 setIsPlacing(true)
               }
             }}
@@ -81,15 +97,21 @@ export default function App() {
 
       <Corkboard
         notes={snapshot.notes}
+        pins={snapshot.pins}
         pendingNoteId={pendingNoteId}
         isPlacing={isPlacing}
+        isPinning={isPinning}
         selection={selection}
         onPlace={(nextSelection) => {
           setIsPlacing(false)
           setSelection(nextSelection)
         }}
-        onAddPin={(id) => void addPin(id)}
-        onRemovePin={(id) => void removePin(id)}
+        onPlacePin={(position) => {
+          void addPin(position).then((didAdd) => {
+            if (didAdd) setIsPinning(false)
+          })
+        }}
+        onRemovePin={(pinId) => void removePin(pinId)}
         onRemoveNote={(id) => void removeNote(id)}
       >
         {selection && (

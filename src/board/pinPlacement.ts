@@ -1,0 +1,43 @@
+import {
+  BOARD_HEIGHT,
+  BOARD_WIDTH,
+  NOTE_HEIGHT_ON_BOARD,
+  NOTE_SIZE,
+  NOTE_WIDTH_ON_BOARD,
+  PIN_COLLISION_DISTANCE,
+} from '../constants'
+import type { BoardNote, BoardPin, PinPosition } from '../types'
+
+export function isPinPositionAvailable(pins: BoardPin[], position: PinPosition) {
+  if (
+    !Number.isFinite(position.x) || !Number.isFinite(position.y)
+    || position.x < 0 || position.x > 1
+    || position.y < 0 || position.y > 1
+  ) {
+    return false
+  }
+
+  return pins.every((pin) => {
+    const deltaX = (pin.x - position.x) * BOARD_WIDTH
+    const deltaY = (pin.y - position.y) * BOARD_HEIGHT
+    return Math.hypot(deltaX, deltaY) >= PIN_COLLISION_DISTANCE
+  })
+}
+
+export function pinTouchesNote(pin: PinPosition, note: BoardNote) {
+  if (note.removedAt !== null) return false
+
+  const centerX = note.boardX + NOTE_WIDTH_ON_BOARD / 2
+  const centerY = note.boardY + NOTE_HEIGHT_ON_BOARD / 2
+  const deltaX = (pin.x - centerX) * BOARD_WIDTH
+  const deltaY = (pin.y - centerY) * BOARD_HEIGHT
+  const radians = (-note.rotation * Math.PI) / 180
+  const localX = deltaX * Math.cos(radians) - deltaY * Math.sin(radians)
+  const localY = deltaX * Math.sin(radians) + deltaY * Math.cos(radians)
+
+  return Math.abs(localX) <= NOTE_SIZE / 2 && Math.abs(localY) <= NOTE_SIZE / 2
+}
+
+export function noteHasPins(note: BoardNote, pins: BoardPin[]) {
+  return pins.some((pin) => pinTouchesNote(pin, note))
+}

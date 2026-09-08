@@ -56,8 +56,6 @@ export function NoteComposer({
       aria-label="Create note at selected position"
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="draft-pin" aria-hidden="true" />
-
       <div className="draft-note__topbar">
         <div className="draft-tabs" role="tablist" aria-label="Note type">
           <button

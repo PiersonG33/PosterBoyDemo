@@ -1,4 +1,18 @@
-import type { BoardNote, DrawingData, NoteColor } from '../types'
+import { BOARD_HEIGHT, BOARD_WIDTH, NOTE_SIZE } from '../constants'
+import type { BoardNote, BoardPin, DrawingData, NoteColor } from '../types'
+
+const pinSpots = [
+  [0.5, 0.08],
+  [0.18, 0.2],
+  [0.82, 0.18],
+  [0.29, 0.76],
+  [0.76, 0.72],
+  [0.5, 0.48],
+  [0.12, 0.54],
+  [0.88, 0.49],
+] as const
+
+const seedPinCounts: Record<string, number> = {}
 
 const sketch = (strokes: DrawingData['strokes']): DrawingData => ({
   version: 1,
@@ -14,20 +28,22 @@ const text = (
   boardY: number,
   rotation: number,
   color: NoteColor,
-  pinCount = 0,
-): BoardNote => ({
-  id,
-  createdAt: '2026-09-08T12:00:00.000Z',
-  contentType: 'text',
-  textContent,
-  drawingData: null,
-  boardX,
-  boardY,
-  rotation,
-  color,
-  pinCount,
-  removedAt: null,
-})
+  pinTotal = 0,
+): BoardNote => {
+  seedPinCounts[id] = pinTotal
+  return {
+    id,
+    createdAt: '2026-09-08T12:00:00.000Z',
+    contentType: 'text',
+    textContent,
+    drawingData: null,
+    boardX,
+    boardY,
+    rotation,
+    color,
+    removedAt: null,
+  }
+}
 
 const drawing = (
   id: string,
@@ -36,20 +52,22 @@ const drawing = (
   boardY: number,
   rotation: number,
   color: NoteColor,
-  pinCount = 0,
-): BoardNote => ({
-  id,
-  createdAt: '2026-09-08T12:00:00.000Z',
-  contentType: 'drawing',
-  textContent: null,
-  drawingData,
-  boardX,
-  boardY,
-  rotation,
-  color,
-  pinCount,
-  removedAt: null,
-})
+  pinTotal = 0,
+): BoardNote => {
+  seedPinCounts[id] = pinTotal
+  return {
+    id,
+    createdAt: '2026-09-08T12:00:00.000Z',
+    contentType: 'drawing',
+    textContent: null,
+    drawingData,
+    boardX,
+    boardY,
+    rotation,
+    color,
+    removedAt: null,
+  }
+}
 
 export const seedNotes: BoardNote[] = [
   text('seed-1', 'Take a note.\nLeave a note.', 0.06, 0.07, -2.2, 'butter', 3),
@@ -90,7 +108,25 @@ export const seedNotes: BoardNote[] = [
     0.59, 0.65, -2, 'lavender', 1,
   ),
   text('seed-11', 'draw something weird →', 0.8, 0.58, 3.4, 'butter', 2),
-  text('seed-12', 'This board belongs to whoever shows up.', 0.16, 0.84, -2.7, 'rose', 4),
-  text('seed-13', 'hello, stranger ✦', 0.48, 0.86, 1.4, 'mint'),
-  text('seed-14', 'Protect it or pull it down.', 0.75, 0.84, -1.8, 'sky', 3),
+  text('seed-12', 'This board belongs to whoever shows up.', 0.16, 0.76, -2.7, 'rose', 4),
+  text('seed-13', 'hello, stranger ✦', 0.48, 0.76, 1.4, 'mint'),
+  text('seed-14', 'Protect it or pull it down.', 0.75, 0.76, -1.8, 'sky', 3),
 ]
+
+export const seedPins: BoardPin[] = seedNotes.flatMap((note) => {
+  const radians = (note.rotation * Math.PI) / 180
+  const centerX = note.boardX + NOTE_SIZE / BOARD_WIDTH / 2
+  const centerY = note.boardY + NOTE_SIZE / BOARD_HEIGHT / 2
+
+  return pinSpots.slice(0, seedPinCounts[note.id] ?? 0).map(([x, y], index) => {
+    const localX = (x - 0.5) * NOTE_SIZE
+    const localY = (y - 0.5) * NOTE_SIZE
+    const rotatedX = localX * Math.cos(radians) - localY * Math.sin(radians)
+    const rotatedY = localX * Math.sin(radians) + localY * Math.cos(radians)
+    return {
+      id: `${note.id}-pin-${index + 1}`,
+      x: centerX + rotatedX / BOARD_WIDTH,
+      y: centerY + rotatedY / BOARD_HEIGHT,
+    }
+  })
+})

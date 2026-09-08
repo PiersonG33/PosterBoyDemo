@@ -1,5 +1,14 @@
 export type NoteColor = 'butter' | 'rose' | 'mint' | 'sky' | 'lavender'
 
+export interface PinPosition {
+  x: number
+  y: number
+}
+
+export interface BoardPin extends PinPosition {
+  id: string
+}
+
 export type DrawingPoint = readonly [number, number]
 
 export interface DrawingStroke {
@@ -21,7 +30,6 @@ interface NoteBase {
   boardY: number
   rotation: number
   color: NoteColor
-  pinCount: number
   removedAt: string | null
 }
 
@@ -48,6 +56,7 @@ export interface ActionBudget {
 
 export interface BoardSnapshot {
   notes: BoardNote[]
+  pins: BoardPin[]
   budget: ActionBudget
 }
 

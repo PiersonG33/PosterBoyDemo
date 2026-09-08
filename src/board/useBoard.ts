@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { BoardGateway } from './BoardGateway'
 import { LocalBoardGateway } from './localBoardGateway'
-import type { BoardSnapshot, DrawingData, NotePlacement } from '../types'
+import type { BoardSnapshot, DrawingData, NotePlacement, PinPosition } from '../types'
 
 type Mutation = () => Promise<BoardSnapshot>
 
@@ -76,8 +76,8 @@ export function useBoard() {
       runMutation(() => gateway.createText(text, placement)),
     createDrawing: (drawing: DrawingData, placement: NotePlacement) =>
       runMutation(() => gateway.createDrawing(drawing, placement)),
-    addPin: (noteId: string) => runMutation(() => gateway.addPin(noteId), noteId),
-    removePin: (noteId: string) => runMutation(() => gateway.removePin(noteId), noteId),
+    addPin: (position: PinPosition) => runMutation(() => gateway.addPin(position)),
+    removePin: (pinId: string) => runMutation(() => gateway.removePin(pinId)),
     removeNote: (noteId: string) => runMutation(() => gateway.removeNote(noteId), noteId),
   }
 }
