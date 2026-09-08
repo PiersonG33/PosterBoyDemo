@@ -27,7 +27,7 @@ export function StickyNote({
     '--note-x': `${note.boardX * 100}%`,
     '--note-y': `${note.boardY * 100}%`,
     '--note-rotation': `${note.rotation}deg`,
-    zIndex: Math.round(note.boardY * 10) + 1,
+    zIndex: Math.round(note.boardY * 100) + 1,
   }
 
   return (

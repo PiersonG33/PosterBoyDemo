@@ -57,3 +57,12 @@ export interface NotePlacement {
   rotation: number
   color: NoteColor
 }
+
+export interface PlacementSelection {
+  placement: NotePlacement
+  focusX: number
+  focusY: number
+  offsetX: number
+  offsetY: number
+  scale: number
+}

@@ -8,6 +8,9 @@ This first implementation covers the static and local-interaction phases of the 
 
 - responsive corkboard and sticky-note visual system;
 - seeded text and drawing notes;
+- cursor-attached note placement with exact normalized board coordinates;
+- in-board zoomed editing that keeps neighboring notes visible;
+- text/drawing and sticky-color controls after placement;
 - text composer with a 500-character limit;
 - pointer-event drawing editor with undo and clear;
 - validated stroke JSON rendered into application-generated SVG previews;

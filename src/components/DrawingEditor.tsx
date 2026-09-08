@@ -132,12 +132,12 @@ export function DrawingEditor({ disabled = false, onPost }: DrawingEditorProps) 
         </div>
       </div>
       <button
-        className="post-button"
+        className="draft-post"
         type="button"
         disabled={strokes.length === 0 || disabled}
         onClick={() => onPost({ version: 1, width: CANVAS_SIZE, height: CANVAS_SIZE, strokes })}
       >
-        {disabled ? 'Posting…' : 'Stick it up'}
+        {disabled ? 'Posting…' : 'Post'}
         <span aria-hidden="true">↗</span>
       </button>
     </div>
