@@ -5,7 +5,7 @@ export const MAX_DRAWING_POINTS = 8_000
 export const MAX_ACTIVE_NOTES = 120
 
 export const BOARD_WIDTH = 1_352
-export const BOARD_HEIGHT = 1_016
+export const BOARD_HEIGHT = 813
 export const REFERENCE_NOTE_SIZE = 218
 export const DEFAULT_NOTE_SIZE_PERCENT = 60
 export const MIN_NOTE_SIZE_PERCENT = 40

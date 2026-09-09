@@ -19,12 +19,12 @@ import type {
 } from '../types'
 import { BoardActionError, type BoardGateway } from './BoardGateway'
 
-const STORAGE_KEY_PREFIX = 'poster-boy-board-v4'
+const STORAGE_KEY_PREFIX = 'poster-boy-board-v5'
 const ACTOR_KEY = 'poster-boy-visitor-v1'
 const CHANNEL_NAME = 'poster-boy-board-events'
 
 interface StoredBoard {
-  version: 4
+  version: 5
   notes: BoardNote[]
   pins: BoardPin[]
   budgets: Record<string, ActionBudget>
@@ -197,7 +197,7 @@ export class LocalBoardGateway implements BoardGateway {
 
     try {
       const parsed = JSON.parse(stored) as StoredBoard
-      if (parsed.version !== 4 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
+      if (parsed.version !== 5 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
         throw new Error('Invalid board')
       }
       return parsed
@@ -207,9 +207,9 @@ export class LocalBoardGateway implements BoardGateway {
   }
 
   private createFreshBoard(): StoredBoard {
-    const notes = createSeedNotes(this.settings.randomTilt)
+    const notes = createSeedNotes(this.settings.randomTilt, this.noteSize)
     return {
-      version: 4,
+      version: 5,
       notes,
       pins: createSeedPins(notes, this.noteSize),
       budgets: {},

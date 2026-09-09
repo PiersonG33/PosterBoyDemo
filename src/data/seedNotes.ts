@@ -113,9 +113,13 @@ const seedNoteTemplates: BoardNote[] = [
   text('seed-14', 'Protect it or pull it down.', 0.75, 0.76, -1.8, 'sky', 3),
 ]
 
-export function createSeedNotes(randomTilt: boolean): BoardNote[] {
+export function createSeedNotes(randomTilt: boolean, noteSize: number): BoardNote[] {
+  const maxBoardX = Math.max(0, 1 - noteSize / BOARD_WIDTH)
+  const maxBoardY = Math.max(0, 1 - noteSize / BOARD_HEIGHT)
   return structuredClone(seedNoteTemplates).map((note) => ({
     ...note,
+    boardX: Math.min(note.boardX, maxBoardX),
+    boardY: Math.min(note.boardY, maxBoardY),
     rotation: randomTilt ? note.rotation : 0,
   }))
 }

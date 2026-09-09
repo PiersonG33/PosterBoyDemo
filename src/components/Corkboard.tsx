@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { calculatePlacement } from '../board/calculatePlacement'
 import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from '../board/pinPlacement'
-import { BOARD_WIDTH } from '../constants'
+import { BOARD_WIDTH, REFERENCE_NOTE_SIZE } from '../constants'
 import type { BoardNote, BoardPin, PinPosition, PlacementSelection } from '../types'
 import { PositionedPin } from './PositionedPin'
 import { StickyNote } from './StickyNote'
@@ -33,6 +33,14 @@ type FocusStyle = CSSProperties & {
 type BoardStyle = CSSProperties & {
   '--note-size': string
   '--ghost-rotation': string
+  '--pin-button-size': string
+  '--pin-button-height': string
+  '--pin-button-offset': string
+  '--pin-visual-size': string
+  '--pin-visual-offset': string
+  '--pin-tail-width': string
+  '--pin-tail-height': string
+  '--pin-hover-lift': string
 }
 
 export function Corkboard({
@@ -69,9 +77,21 @@ export function Corkboard({
     '--focus-offset-y': `${selection.offsetY}px`,
     '--focus-scale': selection.scale,
   } : {}
+  const pinScale = noteSize / REFERENCE_NOTE_SIZE
+  const pinLength = (referencePixels: number) => (
+    `${referencePixels * pinScale / BOARD_WIDTH * 100}cqw`
+  )
   const boardStyle: BoardStyle = {
     '--note-size': `${noteSize / BOARD_WIDTH * 100}%`,
     '--ghost-rotation': `${noteRotation}deg`,
+    '--pin-button-size': pinLength(36),
+    '--pin-button-height': pinLength(38),
+    '--pin-button-offset': pinLength(-18),
+    '--pin-visual-size': pinLength(20),
+    '--pin-visual-offset': pinLength(8),
+    '--pin-tail-width': pinLength(4),
+    '--pin-tail-height': pinLength(10),
+    '--pin-hover-lift': pinLength(-2),
   }
 
   const updateGhost = (event: React.PointerEvent<HTMLElement>) => {

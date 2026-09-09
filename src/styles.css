@@ -240,7 +240,7 @@ button:disabled {
 .board-frame {
   width: max(100%, 1386px);
   height: auto;
-  aspect-ratio: 1386 / 1050;
+  aspect-ratio: 1386 / 847;
   padding: 15px;
   position: relative;
   background:
@@ -289,6 +289,10 @@ button:disabled {
 
 .board-wrap--editing .board-viewport {
   overflow: hidden;
+}
+
+.board-wrap--editing .corkboard {
+  overflow: visible;
 }
 
 .board-wrap--editing .board-frame {
@@ -465,12 +469,12 @@ button:disabled {
 }
 
 .pin-button {
-  width: 2.663cqw;
-  height: 2.811cqw;
+  width: var(--pin-button-size);
+  height: var(--pin-button-height);
   padding: 0;
   position: absolute;
-  left: -1.3315cqw;
-  top: -1.3315cqw;
+  left: var(--pin-button-offset);
+  top: var(--pin-button-offset);
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -479,17 +483,17 @@ button:disabled {
 }
 
 .pin-visual {
-  width: 1.4793cqw;
-  height: 1.4793cqw;
+  width: var(--pin-visual-size);
+  height: var(--pin-visual-size);
   position: absolute;
-  left: .5918cqw;
-  top: .5918cqw;
+  left: var(--pin-visual-offset);
+  top: var(--pin-visual-offset);
   pointer-events: none;
   transition: transform 120ms ease;
 }
 
 .pin-button:hover:not(.pin-button--holding) .pin-visual {
-  transform: translateY(-.148cqw);
+  transform: translateY(var(--pin-hover-lift));
 }
 
 .pin-button--holding .pin-visual {
@@ -497,8 +501,8 @@ button:disabled {
 }
 
 .pin-hold-ring {
-  width: 2.663cqw;
-  height: 2.663cqw;
+  width: var(--pin-button-size);
+  height: var(--pin-button-size);
   position: absolute;
   left: 0;
   top: 0;
@@ -522,8 +526,8 @@ button:disabled {
 }
 
 .ghost-pin {
-  width: 1.4793cqw;
-  height: 1.4793cqw;
+  width: var(--pin-visual-size);
+  height: var(--pin-visual-size);
   position: absolute;
   z-index: 2100;
   transform: translate(-50%, -50%);
@@ -533,8 +537,8 @@ button:disabled {
 
 .pin-visual::after,
 .ghost-pin::after {
-  width: .296cqw;
-  height: .74cqw;
+  width: var(--pin-tail-width);
+  height: var(--pin-tail-height);
 }
 
 .ghost-pin--blocked {
@@ -597,7 +601,7 @@ button:disabled {
   position: absolute;
   left: var(--note-x);
   top: var(--note-y);
-  z-index: 1000;
+  z-index: 2200;
   box-shadow: 7px 10px 17px rgb(57 27 10 / 29%), inset 0 -8px 15px rgb(102 72 26 / 7%);
   animation: draft-arrives 280ms 250ms cubic-bezier(.2, .8, .25, 1) both;
   container-type: inline-size;
@@ -795,14 +799,16 @@ button:disabled {
   margin: 0;
   padding: 1.2cqw;
   position: absolute;
-  left: 3.21cqw;
-  right: 3.21cqw;
-  top: 16.5cqw;
+  left: 0;
+  right: 0;
+  top: -14cqw;
   z-index: 4;
   display: flex;
   align-items: center;
   gap: 1.4cqw;
-  background: rgb(255 255 255 / 36%);
+  border: 1px solid rgb(43 35 25 / 24%);
+  background: var(--paper);
+  box-shadow: 1.5cqw 1.5cqw 0 rgb(43 35 25 / 22%);
 }
 
 .drawing-toolbar > div {
