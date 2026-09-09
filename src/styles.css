@@ -103,6 +103,45 @@ button:disabled {
   gap: 12px;
 }
 
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b6257;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.connection-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #93897c;
+  box-shadow: 0 0 0 2px rgb(147 137 124 / 16%);
+}
+
+.connection-status--live i {
+  background: #4a792f;
+  box-shadow: 0 0 0 2px rgb(74 121 47 / 16%);
+}
+
+.connection-status--connecting i {
+  background: #d79233;
+  animation: connection-pulse 900ms ease-in-out infinite alternate;
+}
+
+.connection-status--offline {
+  color: #9b3f31;
+}
+
+.connection-status--offline i {
+  background: #b34d3b;
+  box-shadow: 0 0 0 2px rgb(179 77 59 / 16%);
+}
+
 .action-meter {
   width: clamp(145px, 17vw, 225px);
 }
@@ -1096,6 +1135,18 @@ button:disabled {
   font-family: 'Libre Caslon Display', Georgia, serif;
 }
 
+.loading-screen button {
+  padding: 8px 14px;
+  border: 1px solid #9b8977;
+  border-radius: 999px;
+  color: var(--navy);
+  background: transparent;
+  font: 700 10px/1 system-ui, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
 .loading-pin {
   width: 24px;
   height: 24px;
@@ -1214,6 +1265,13 @@ button:disabled {
   to { transform: translateY(-7px); }
 }
 
+@keyframes connection-pulse {
+  to {
+    opacity: .45;
+    transform: scale(.75);
+  }
+}
+
 @media (max-width: 680px) {
   .site-header {
     min-height: 68px;
@@ -1226,6 +1284,10 @@ button:disabled {
     grid-column: 2 / 4;
     justify-self: end;
     gap: 8px;
+  }
+
+  .connection-status {
+    display: none;
   }
 
   .action-meter {

@@ -4,17 +4,27 @@ import { ActionMeter } from './components/ActionMeter'
 import { Corkboard } from './components/Corkboard'
 import { DebugPanel } from './components/DebugPanel'
 import { NoteComposer } from './components/NoteComposer'
-import { getNoteSize, getRandomNoteRotation, readDemoSettings } from './demoSettings'
+import {
+  defaultDemoSettings,
+  getNoteSize,
+  getRandomNoteRotation,
+  readDemoSettings,
+} from './demoSettings'
+import { getSupabaseRuntimeConfig } from './lib/supabase'
 import type { DrawingData, NoteColor, PlacementSelection } from './types'
 
 export default function App() {
-  const [settings] = useState(readDemoSettings)
+  const [settings] = useState(() => (
+    import.meta.env.PROD || getSupabaseRuntimeConfig() ? defaultDemoSettings : readDemoSettings()
+  ))
   const noteSize = getNoteSize(settings)
   const {
     snapshot,
     pendingNoteId,
     isPosting,
     message,
+    connectionStatus,
+    gatewayMode,
     clearMessage,
     createText,
     createDrawing,
@@ -29,10 +39,10 @@ export default function App() {
   const [placementRotation, setPlacementRotation] = useState(0)
 
   useEffect(() => {
-    if (!message) return
+    if (!message || !snapshot) return
     const timeout = window.setTimeout(clearMessage, 4_500)
     return () => window.clearTimeout(timeout)
-  }, [clearMessage, message])
+  }, [clearMessage, message, snapshot])
 
   useEffect(() => {
     if (!isPlacing && !isPinning && !selection) return
@@ -51,7 +61,8 @@ export default function App() {
     return (
       <main className="loading-screen">
         <div className="loading-pin" />
-        <p>Unrolling the corkboard…</p>
+        <p>{message ?? 'Unrolling the corkboard…'}</p>
+        {message && <button type="button" onClick={() => location.reload()}>Try again</button>}
       </main>
     )
   }
@@ -66,6 +77,14 @@ export default function App() {
           <span>BOY</span>
         </a>
         <div className="header-actions">
+          <span className={`connection-status connection-status--${connectionStatus}`}>
+            <i aria-hidden="true" />
+            {gatewayMode === 'local'
+              ? 'Local demo'
+              : connectionStatus === 'live'
+                ? 'Live'
+                : connectionStatus === 'offline' ? 'Offline' : 'Connecting'}
+          </span>
           <ActionMeter budget={snapshot.budget} />
           <button
             className={`tool-button pin-tool ${isPinning ? 'is-active' : ''}`}
@@ -151,16 +170,18 @@ export default function App() {
         </div>
       )}
 
-      <DebugPanel
-        settings={settings}
-        isBusy={isPosting}
-        onResetBoard={async () => {
-          setIsPlacing(false)
-          setIsPinning(false)
-          setSelection(null)
-          return resetBoard()
-        }}
-      />
+      {import.meta.env.DEV && gatewayMode === 'local' && (
+        <DebugPanel
+          settings={settings}
+          isBusy={isPosting}
+          onResetBoard={async () => {
+            setIsPlacing(false)
+            setIsPinning(false)
+            setSelection(null)
+            return resetBoard()
+          }}
+        />
+      )}
     </div>
   )
 }

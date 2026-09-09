@@ -16,12 +16,13 @@ This first implementation covers the static and local-interaction phases of the 
 - validated stroke JSON rendered into application-generated SVG previews;
 - board-positioned pins that can secure overlapping notes, with collision checks and hold-to-pull progress;
 - hold-to-remove perimeter tracing with a standard exit and optional curved peel-away effect;
-- 20-action, 10-minute local budget;
+- 20-action, 10-minute per-visitor budget;
 - pin, unpin, and removal rules;
-- persistence and cross-tab updates through browser storage.
+- a Supabase shared-board gateway with live cross-device updates;
+- a browser-storage fallback when Supabase is not configured;
 - developer controls for note size, tilt, removal animation, and restoring the seeded board.
 
-The gateway interface under `src/board/` is the seam for replacing local storage with the Supabase RPC/realtime implementation. Until that phase is connected, separate browsers and devices do not share state.
+The production setup uses GitHub Pages plus Supabase. Follow the exact [investor demo deployment guide](./docs/DEPLOYMENT.md) to create the backend and connect the deployed build.
 
 ## Run locally
 
@@ -30,7 +31,9 @@ npm install
 npm run dev
 ```
 
-Then open the URL printed by Vite. The prototype deliberately stores its current board in local browser storage. Use the `DEV` panel to restore the seed board or change the note-size/tilt profile.
+Then open the URL printed by Vite. Without `.env.local`, the prototype stores its board in local browser storage. Use the `DEV` panel to restore the seed board or change the note-size/tilt profile.
+
+To exercise the shared board locally, copy `.env.example` to `.env.local` and enter a configured Supabase project's URL and publishable key. Shared-board and production builds hide the developer panel and lock the common board geometry at the 60% note-size profile.
 
 ## Board scaling
 
@@ -44,6 +47,6 @@ npm test
 npm run build
 ```
 
-## Supabase configuration
+## Deploy
 
-Copy `.env.example` to `.env.local` and add the project URL and anonymous key when the Supabase gateway is introduced. Never put a service-role key in a frontend environment file.
+The Pages workflow runs lint, tests, and the production build before publishing `dist`. Database setup, GitHub variables, reset instructions, and the demo-day checklist are in [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md).

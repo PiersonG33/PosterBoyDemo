@@ -1,26 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { REMOVED_NOTE_RETENTION_MS } from '../constants'
-import type { BoardGateway } from './BoardGateway'
-import { LocalBoardGateway } from './localBoardGateway'
 import type { DemoSettings } from '../demoSettings'
 import type { BoardSnapshot, DrawingData, NotePlacement, PinPosition } from '../types'
+import type { BoardConnectionStatus, BoardGateway } from './BoardGateway'
+import { createBoardGateway } from './createBoardGateway'
 
 type Mutation = () => Promise<BoardSnapshot>
 
 export function useBoard(settings: DemoSettings) {
-  const gateway = useMemo<BoardGateway>(() => new LocalBoardGateway(settings), [settings])
+  const gateway = useMemo<BoardGateway>(() => createBoardGateway(settings), [settings])
   const [snapshot, setSnapshot] = useState<BoardSnapshot | null>(null)
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null)
   const [isPosting, setIsPosting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<BoardConnectionStatus>(
+    gateway.mode === 'local' ? 'local' : 'connecting',
+  )
 
   useEffect(() => {
     let current = true
-    void gateway.load().then((initial) => {
-      if (current) setSnapshot(initial)
-    })
+    void gateway.load()
+      .then((initial) => {
+        if (current) setSnapshot(initial)
+      })
+      .catch((error) => {
+        if (!current) return
+        setConnectionStatus('offline')
+        setMessage(error instanceof Error ? error.message : 'The shared board is unavailable.')
+      })
     const unsubscribe = gateway.subscribe((next) => {
       if (current) setSnapshot(next)
+    }, (status) => {
+      if (current) setConnectionStatus(status)
     })
     return () => {
       current = false
@@ -32,11 +43,21 @@ export function useBoard(settings: DemoSettings) {
     if (!snapshot) return
     const milliseconds = Date.parse(snapshot.budget.windowEndsAt) - Date.now() + 250
     if (milliseconds <= 0) {
-      void gateway.load().then(setSnapshot)
+      void gateway.load()
+        .then(setSnapshot)
+        .catch((error) => {
+          setConnectionStatus('offline')
+          setMessage(error instanceof Error ? error.message : 'The shared board is unavailable.')
+        })
       return
     }
     const timeout = window.setTimeout(() => {
-      void gateway.load().then(setSnapshot)
+      void gateway.load()
+        .then(setSnapshot)
+        .catch((error) => {
+          setConnectionStatus('offline')
+          setMessage(error instanceof Error ? error.message : 'The shared board is unavailable.')
+        })
     }, milliseconds)
     return () => window.clearTimeout(timeout)
   }, [gateway, snapshot])
@@ -73,6 +94,8 @@ export function useBoard(settings: DemoSettings) {
     pendingNoteId,
     isPosting,
     message,
+    connectionStatus,
+    gatewayMode: gateway.mode,
     clearMessage: () => setMessage(null),
     resetBoard: () => runMutation(() => gateway.reset()),
     createText: (text: string, placement: NotePlacement) =>

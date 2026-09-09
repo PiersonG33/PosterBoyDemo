@@ -18,7 +18,7 @@ import type {
   NotePlacement,
   PinPosition,
 } from '../types'
-import { BoardActionError, type BoardGateway } from './BoardGateway'
+import { BoardActionError, type BoardConnectionStatus, type BoardGateway } from './BoardGateway'
 
 const STORAGE_KEY_PREFIX = 'poster-boy-board-v5'
 const ACTOR_KEY = 'poster-boy-visitor-v1'
@@ -39,6 +39,7 @@ const freshBudget = (now = Date.now()): ActionBudget => ({
 })
 
 export class LocalBoardGateway implements BoardGateway {
+  readonly mode = 'local' as const
   private readonly actorId: string
   private readonly channel: BroadcastChannel | null
   private readonly noteSize: number
@@ -67,7 +68,11 @@ export class LocalBoardGateway implements BoardGateway {
     return this.toSnapshot(board, budget)
   }
 
-  subscribe(onChange: (snapshot: BoardSnapshot) => void): () => void {
+  subscribe(
+    onChange: (snapshot: BoardSnapshot) => void,
+    onStatus?: (status: BoardConnectionStatus) => void,
+  ): () => void {
+    onStatus?.('local')
     const readLatestForThisVisitor = () => {
       const board = this.readBoard()
       onChange(this.toSnapshot(board, this.getCurrentBudget(board)))
