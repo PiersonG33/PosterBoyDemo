@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { NOTE_REMOVAL_HOLD_MS } from '../constants'
+import { NOTE_REMOVAL_ANIMATION_MS, NOTE_REMOVAL_HOLD_MS } from '../constants'
 import { getTextDensityClass } from '../textSizing'
 import type { BoardNote } from '../types'
 import { DrawingNote } from './DrawingNote'
@@ -22,6 +22,7 @@ type NoteStyle = CSSProperties & {
   '--trace-second-segment-delay': string
   '--trace-third-segment-delay': string
   '--trace-fourth-segment-delay': string
+  '--peel-duration': string
 }
 
 export function StickyNote({
@@ -48,6 +49,7 @@ export function StickyNote({
     '--trace-second-segment-delay': `${traceSegmentDuration}ms`,
     '--trace-third-segment-delay': `${traceSegmentDuration * 2}ms`,
     '--trace-fourth-segment-delay': `${traceSegmentDuration * 3}ms`,
+    '--peel-duration': `${NOTE_REMOVAL_ANIMATION_MS}ms`,
     zIndex: stackIndex + 1,
   }
 

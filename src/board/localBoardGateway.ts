@@ -3,6 +3,7 @@ import {
   ACTION_WINDOW_MS,
   MAX_ACTIVE_NOTES,
   MAX_TEXT_LENGTH,
+  REMOVED_NOTE_RETENTION_MS,
 } from '../constants'
 import { createSeedNotes, createSeedPins } from '../data/seedNotes'
 import { getNoteSize, type DemoSettings } from '../demoSettings'
@@ -224,7 +225,7 @@ export class LocalBoardGateway implements BoardGateway {
   private toSnapshot(board: StoredBoard, budget: ActionBudget): BoardSnapshot {
     return {
       notes: structuredClone(board.notes.filter((note) =>
-        note.removedAt === null || Date.now() - Date.parse(note.removedAt) < 600,
+        note.removedAt === null || Date.now() - Date.parse(note.removedAt) < REMOVED_NOTE_RETENTION_MS,
       )),
       pins: structuredClone(board.pins),
       budget: { ...budget },

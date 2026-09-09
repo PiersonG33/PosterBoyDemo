@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { REMOVED_NOTE_RETENTION_MS } from '../constants'
 import type { BoardGateway } from './BoardGateway'
 import { LocalBoardGateway } from './localBoardGateway'
 import type { DemoSettings } from '../demoSettings'
@@ -46,7 +47,7 @@ export function useBoard(settings: DemoSettings) {
       setSnapshot((current) => current
         ? { ...current, notes: current.notes.filter((note) => note.removedAt === null) }
         : current)
-    }, 500)
+    }, REMOVED_NOTE_RETENTION_MS)
     return () => window.clearTimeout(timeout)
   }, [snapshot])
 
