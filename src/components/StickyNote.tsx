@@ -11,6 +11,7 @@ interface StickyNoteProps {
   isPending: boolean
   removalLocked: boolean
   isPinned: boolean
+  useCurvedPeel: boolean
   onRemove: () => void
 }
 
@@ -31,6 +32,7 @@ export function StickyNote({
   isPending,
   removalLocked,
   isPinned,
+  useCurvedPeel,
   onRemove,
 }: StickyNoteProps) {
   const traceSegmentDuration = (NOTE_REMOVAL_HOLD_MS - 40) / 4
@@ -55,7 +57,7 @@ export function StickyNote({
 
   return (
     <article
-      className={`sticky-shell ${note.removedAt ? 'sticky-shell--removed' : ''} ${!removalDisabled ? 'sticky-shell--removable' : ''} ${hold.isHolding ? 'sticky-shell--holding' : ''}`}
+      className={`sticky-shell ${note.removedAt ? 'sticky-shell--removed' : ''} ${useCurvedPeel ? 'sticky-shell--curved-peel' : ''} ${!removalDisabled ? 'sticky-shell--removable' : ''} ${hold.isHolding ? 'sticky-shell--holding' : ''}`}
       style={style}
       role={!removalDisabled ? 'button' : undefined}
       tabIndex={!removalDisabled ? 0 : undefined}

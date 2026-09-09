@@ -15,11 +15,11 @@ This first implementation covers the static and local-interaction phases of the 
 - pointer-event drawing editor with pen sizes, color, undo, and clear;
 - validated stroke JSON rendered into application-generated SVG previews;
 - board-positioned pins that can secure overlapping notes, with collision checks and hold-to-pull progress;
-- hold-to-remove perimeter tracing and a curved peel-away exit for unpinned notes;
+- hold-to-remove perimeter tracing with a standard exit and optional curved peel-away effect;
 - 20-action, 10-minute local budget;
 - pin, unpin, and removal rules;
 - persistence and cross-tab updates through browser storage.
-- developer controls for note size, tilt, and restoring the seeded board.
+- developer controls for note size, tilt, removal animation, and restoring the seeded board.
 
 The gateway interface under `src/board/` is the seam for replacing local storage with the Supabase RPC/realtime implementation. Until that phase is connected, separate browsers and devices do not share state.
 

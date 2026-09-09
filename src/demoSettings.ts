@@ -10,11 +10,13 @@ const SETTINGS_KEY = 'poster-boy-demo-settings-v1'
 export interface DemoSettings {
   noteSizePercent: number
   randomTilt: boolean
+  curvedPeel: boolean
 }
 
 export const defaultDemoSettings: DemoSettings = {
   noteSizePercent: DEFAULT_NOTE_SIZE_PERCENT,
   randomTilt: true,
+  curvedPeel: false,
 }
 
 const normalizeNoteSize = (value: number) => Math.min(
@@ -26,6 +28,7 @@ export function normalizeDemoSettings(settings: DemoSettings): DemoSettings {
   return {
     noteSizePercent: normalizeNoteSize(settings.noteSizePercent),
     randomTilt: Boolean(settings.randomTilt),
+    curvedPeel: Boolean(settings.curvedPeel),
   }
 }
 
@@ -41,6 +44,9 @@ export function readDemoSettings(): DemoSettings {
       randomTilt: typeof parsed.randomTilt === 'boolean'
         ? parsed.randomTilt
         : defaultDemoSettings.randomTilt,
+      curvedPeel: typeof parsed.curvedPeel === 'boolean'
+        ? parsed.curvedPeel
+        : defaultDemoSettings.curvedPeel,
     })
   } catch {
     return defaultDemoSettings

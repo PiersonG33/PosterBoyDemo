@@ -110,6 +110,7 @@ export default function App() {
         isPinning={isPinning}
         noteSize={noteSize}
         noteRotation={placementRotation}
+        useCurvedPeel={settings.curvedPeel}
         selection={selection}
         onPlace={(nextSelection) => {
           setIsPlacing(false)

@@ -14,6 +14,7 @@ interface CorkboardProps {
   isPinning: boolean
   noteSize: number
   noteRotation: number
+  useCurvedPeel: boolean
   selection: PlacementSelection | null
   onPlace: (selection: PlacementSelection) => void
   onPlacePin: (position: PinPosition) => void
@@ -51,6 +52,7 @@ export function Corkboard({
   isPinning,
   noteSize,
   noteRotation,
+  useCurvedPeel,
   selection,
   onPlace,
   onPlacePin,
@@ -159,6 +161,7 @@ export function Corkboard({
                 isPending={pendingNoteId === note.id}
                 removalLocked={isPinning || isPlacing || Boolean(selection)}
                 isPinned={noteHasPins(note, pins, noteSize)}
+                useCurvedPeel={useCurvedPeel}
                 onRemove={() => onRemoveNote(note.id)}
               />
             ))}

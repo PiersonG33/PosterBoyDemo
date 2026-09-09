@@ -47,9 +47,9 @@ export function useBoard(settings: DemoSettings) {
       setSnapshot((current) => current
         ? { ...current, notes: current.notes.filter((note) => note.removedAt === null) }
         : current)
-    }, REMOVED_NOTE_RETENTION_MS)
+    }, settings.curvedPeel ? REMOVED_NOTE_RETENTION_MS : 500)
     return () => window.clearTimeout(timeout)
-  }, [snapshot])
+  }, [settings.curvedPeel, snapshot])
 
   const runMutation = useCallback(async (mutation: Mutation, noteId?: string) => {
     setMessage(null)

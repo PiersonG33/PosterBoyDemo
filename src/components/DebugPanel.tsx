@@ -18,6 +18,7 @@ export function DebugPanel({ settings, isBusy, onResetBoard }: DebugPanelProps) 
   const [draft, setDraft] = useState(settings)
   const hasPendingChanges = draft.noteSizePercent !== settings.noteSizePercent
     || draft.randomTilt !== settings.randomTilt
+    || draft.curvedPeel !== settings.curvedPeel
 
   const updateDraft = (next: DemoSettings) => {
     const normalized = normalizeDemoSettings(next)
@@ -61,7 +62,16 @@ export function DebugPanel({ settings, isBusy, onResetBoard }: DebugPanelProps) 
             <span>Random note tilt</span>
           </label>
 
-          <p>Changing layout settings opens a freshly seeded board after refresh.</p>
+          <label className="debug-toggle">
+            <input
+              type="checkbox"
+              checked={draft.curvedPeel}
+              onChange={(event) => updateDraft({ ...draft, curvedPeel: event.currentTarget.checked })}
+            />
+            <span>Curved peel removal</span>
+          </label>
+
+          <p>Settings apply after refresh. Size and tilt changes open a freshly seeded board.</p>
 
           <div className="debug-panel__actions">
             <button type="button" onClick={() => location.reload()} disabled={!hasPendingChanges || isBusy}>
