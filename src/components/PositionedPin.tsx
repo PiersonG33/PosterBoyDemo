@@ -1,5 +1,7 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
+import { PIN_REMOVAL_HOLD_MS } from '../constants'
 import type { BoardPin } from '../types'
+import { useHoldAction } from './useHoldAction'
 
 interface PositionedPinProps {
   pin: BoardPin
@@ -8,61 +10,40 @@ interface PositionedPinProps {
 }
 
 export function PositionedPin({ pin, disabled, onRemove }: PositionedPinProps) {
-  const [confirmRemoval, setConfirmRemoval] = useState(false)
-  const style: CSSProperties = { left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }
-
-  useEffect(() => {
-    if (!confirmRemoval) return
-    const cancel = () => setConfirmRemoval(false)
-    const timeout = window.setTimeout(cancel, 4_000)
-    const cancelOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') cancel()
-    }
-    window.addEventListener('keydown', cancelOnEscape)
-    return () => {
-      window.clearTimeout(timeout)
-      window.removeEventListener('keydown', cancelOnEscape)
-    }
-  }, [confirmRemoval])
+  const hold = useHoldAction({ disabled, duration: PIN_REMOVAL_HOLD_MS, onComplete: onRemove })
+  const style = {
+    left: `${pin.x * 100}%`,
+    top: `${pin.y * 100}%`,
+    '--hold-duration': `${PIN_REMOVAL_HOLD_MS}ms`,
+  } as CSSProperties
 
   return (
     <div className="placed-pin" style={style}>
       <button
-        className="pin-button"
+        className={`pin-button ${hold.isHolding ? 'pin-button--holding' : ''}`}
         type="button"
         disabled={disabled}
-        aria-label="Remove this pin"
+        aria-label={hold.isHolding ? 'Keep holding to remove this pin' : 'Press and hold to remove this pin'}
+        title="Hold to pull pin"
+        onPointerDown={(event) => {
+          event.stopPropagation()
+          hold.onPointerDown(event)
+        }}
+        onPointerUp={hold.onPointerUp}
+        onPointerCancel={hold.onPointerCancel}
+        onPointerLeave={hold.onPointerLeave}
+        onKeyDown={hold.onKeyDown}
+        onKeyUp={hold.onKeyUp}
         onClick={(event) => {
           event.stopPropagation()
-          setConfirmRemoval(true)
+          event.preventDefault()
         }}
       >
         <span className="pin-visual" aria-hidden="true" />
+        <svg className="pin-hold-ring" viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="15" pathLength="1" />
+        </svg>
       </button>
-      {confirmRemoval && (
-        <div className="inline-confirm inline-confirm--pin" role="alertdialog" aria-label="Remove pin confirmation">
-          <span>Pull pin?</span>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              setConfirmRemoval(false)
-              onRemove()
-            }}
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              setConfirmRemoval(false)
-            }}
-          >
-            No
-          </button>
-        </div>
-      )}
     </div>
   )
 }

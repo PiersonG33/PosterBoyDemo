@@ -10,6 +10,8 @@ export const NOTE_SIZE = 218
 export const NOTE_WIDTH_ON_BOARD = NOTE_SIZE / BOARD_WIDTH
 export const NOTE_HEIGHT_ON_BOARD = NOTE_SIZE / BOARD_HEIGHT
 export const PIN_COLLISION_DISTANCE = 18
+export const PIN_REMOVAL_HOLD_MS = 750
+export const NOTE_REMOVAL_HOLD_MS = 1_050
 
 export const ACTION_LIMIT = 20
 export const ACTION_WINDOW_MS = 10 * 60 * 1_000

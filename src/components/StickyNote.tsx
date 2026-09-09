@@ -1,6 +1,8 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import type { CSSProperties } from 'react'
+import { NOTE_REMOVAL_HOLD_MS } from '../constants'
 import type { BoardNote } from '../types'
 import { DrawingNote } from './DrawingNote'
+import { useHoldAction } from './useHoldAction'
 
 interface StickyNoteProps {
   note: BoardNote
@@ -15,6 +17,7 @@ type NoteStyle = CSSProperties & {
   '--note-x': string
   '--note-y': string
   '--note-rotation': string
+  '--hold-duration': string
 }
 
 export function StickyNote({
@@ -25,41 +28,38 @@ export function StickyNote({
   isPinned,
   onRemove,
 }: StickyNoteProps) {
-  const [confirmRemoval, setConfirmRemoval] = useState(false)
-
-  useEffect(() => {
-    if (!confirmRemoval) return
-    const cancel = () => setConfirmRemoval(false)
-    const timeout = window.setTimeout(cancel, 4_000)
-    const cancelOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') cancel()
-    }
-    window.addEventListener('keydown', cancelOnEscape)
-    return () => {
-      window.clearTimeout(timeout)
-      window.removeEventListener('keydown', cancelOnEscape)
-    }
-  }, [confirmRemoval])
+  const removalDisabled = isPending || removalLocked || isPinned || note.removedAt !== null
+  const hold = useHoldAction({
+    disabled: removalDisabled,
+    duration: NOTE_REMOVAL_HOLD_MS,
+    onComplete: onRemove,
+  })
 
   const style: NoteStyle = {
     '--note-x': `${note.boardX * 100}%`,
     '--note-y': `${note.boardY * 100}%`,
     '--note-rotation': `${note.rotation}deg`,
+    '--hold-duration': `${NOTE_REMOVAL_HOLD_MS}ms`,
     zIndex: stackIndex + 1,
-  }
-
-  const handleNoteClick = (event: MouseEvent<HTMLElement>) => {
-    if (isPending || removalLocked || isPinned) return
-    const target = event.target as Element
-    if (target === event.currentTarget || !target.closest('button')) setConfirmRemoval(true)
   }
 
   return (
     <article
-      className={`sticky-shell ${note.removedAt ? 'sticky-shell--removed' : ''} ${!removalLocked && !isPinned ? 'sticky-shell--removable' : ''}`}
+      className={`sticky-shell ${note.removedAt ? 'sticky-shell--removed' : ''} ${!removalDisabled ? 'sticky-shell--removable' : ''} ${hold.isHolding ? 'sticky-shell--holding' : ''}`}
       style={style}
-      aria-label={`${note.contentType} note${isPinned ? ', pinned' : ', unpinned'}`}
-      onClick={handleNoteClick}
+      role={!removalDisabled ? 'button' : undefined}
+      tabIndex={!removalDisabled ? 0 : undefined}
+      aria-label={`${note.contentType} note${isPinned ? ', pinned' : ', unpinned'}${!removalDisabled ? hold.isHolding ? ', keep holding to remove' : ', press and hold to remove' : ''}`}
+      title={isPinned ? 'Pull every pin before taking this note down' : !removalDisabled ? 'Hold to take down note' : undefined}
+      onPointerDown={hold.onPointerDown}
+      onPointerUp={hold.onPointerUp}
+      onPointerCancel={hold.onPointerCancel}
+      onPointerLeave={hold.onPointerLeave}
+      onKeyDown={hold.onKeyDown}
+      onKeyUp={hold.onKeyUp}
+      onContextMenu={(event) => {
+        if (!removalDisabled) event.preventDefault()
+      }}
     >
       <div className={`sticky sticky--${note.color} ${note.contentType === 'drawing' ? 'sticky--drawing' : ''}`}>
         <div className="sticky__content">
@@ -70,29 +70,10 @@ export function StickyNote({
           )}
         </div>
 
-        {confirmRemoval && !isPinned && (
-          <div className="inline-confirm inline-confirm--note" role="alertdialog" aria-label="Remove note confirmation">
-            <span>Take this down?</span>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                setConfirmRemoval(false)
-                onRemove()
-              }}
-            >
-              Yes
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                setConfirmRemoval(false)
-              }}
-            >
-              No
-            </button>
-          </div>
+        {hold.isHolding && (
+          <svg className="note-hold-trace" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <rect x="1" y="1" width="98" height="98" rx="0.5" pathLength="1" />
+          </svg>
         )}
       </div>
     </article>

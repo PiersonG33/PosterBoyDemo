@@ -14,8 +14,8 @@ This first implementation covers the static and local-interaction phases of the 
 - text composer with a 500-character limit;
 - pointer-event drawing editor with undo and clear;
 - validated stroke JSON rendered into application-generated SVG previews;
-- board-positioned pins that can secure overlapping notes, with collision checks and inline removal confirmation;
-- click-to-remove confirmation for unpinned notes;
+- board-positioned pins that can secure overlapping notes, with collision checks and hold-to-pull progress;
+- hold-to-remove perimeter tracing for unpinned notes;
 - 20-action, 10-minute local budget;
 - pin, unpin, and removal rules;
 - persistence and cross-tab updates through browser storage.
