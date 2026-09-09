@@ -72,7 +72,7 @@ export function StickyNote({
 
         {hold.isHolding && (
           <svg className="note-hold-trace" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <rect x="1" y="1" width="98" height="98" rx="0.5" pathLength="1" />
+            <rect x="1" y="1" width="98" height="98" rx="0.5" />
           </svg>
         )}
       </div>

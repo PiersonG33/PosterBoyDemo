@@ -404,8 +404,8 @@ button:disabled {
   stroke: var(--navy);
   stroke-width: 3px;
   stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  stroke-dasharray: 392;
+  stroke-dashoffset: 392;
   vector-effect: non-scaling-stroke;
   filter: drop-shadow(0 1px 0 rgb(255 255 255 / 48%));
   animation: hold-trace var(--hold-duration) linear forwards;
@@ -424,7 +424,7 @@ button:disabled {
   padding: 0;
   position: absolute;
   left: -18px;
-  top: -17px;
+  top: -18px;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -437,17 +437,17 @@ button:disabled {
   height: 20px;
   position: absolute;
   left: 8px;
-  top: 5px;
+  top: 8px;
   pointer-events: none;
   transition: transform 120ms ease;
 }
 
-.pin-button:hover .pin-visual {
+.pin-button:hover:not(.pin-button--holding) .pin-visual {
   transform: translateY(-2px);
 }
 
 .pin-button--holding .pin-visual {
-  transform: translateY(-3px) scale(1.04);
+  transform: scale(1.04);
 }
 
 .pin-hold-ring {
@@ -466,8 +466,8 @@ button:disabled {
   stroke: white;
   stroke-width: 2.5px;
   stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  stroke-dasharray: 94.248;
+  stroke-dashoffset: 94.248;
   filter: drop-shadow(0 1px 1px rgb(36 24 18 / 68%));
 }
 

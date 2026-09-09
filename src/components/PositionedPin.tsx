@@ -41,7 +41,7 @@ export function PositionedPin({ pin, disabled, onRemove }: PositionedPinProps) {
       >
         <span className="pin-visual" aria-hidden="true" />
         <svg className="pin-hold-ring" viewBox="0 0 36 36" aria-hidden="true">
-          <circle cx="18" cy="18" r="15" pathLength="1" />
+          <circle cx="18" cy="18" r="15" />
         </svg>
       </button>
     </div>
