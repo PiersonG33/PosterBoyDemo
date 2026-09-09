@@ -19,6 +19,9 @@ export function validateDrawing(drawing: DrawingData): string | null {
       return 'One of the strokes is too detailed.'
     }
     if (stroke.width < 1 || stroke.width > 24) return 'Invalid pen width.'
+    if (stroke.color !== undefined && !/^#[0-9a-f]{6}$/i.test(stroke.color)) {
+      return 'Invalid pen color.'
+    }
 
     for (const [x, y] of stroke.points) {
       if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) {

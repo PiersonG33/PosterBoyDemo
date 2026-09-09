@@ -1,4 +1,4 @@
-import { BOARD_HEIGHT, BOARD_WIDTH, NOTE_SIZE } from '../constants'
+import { BOARD_HEIGHT, BOARD_WIDTH } from '../constants'
 import type { BoardNote, BoardPin, DrawingData, NoteColor } from '../types'
 
 const pinSpots = [
@@ -69,7 +69,7 @@ const drawing = (
   }
 }
 
-export const seedNotes: BoardNote[] = [
+const seedNoteTemplates: BoardNote[] = [
   text('seed-1', 'Take a note.\nLeave a note.', 0.06, 0.07, -2.2, 'butter', 3),
   text('seed-2', 'What should the internet feel like?', 0.29, 0.04, 1.8, 'rose', 7),
   drawing(
@@ -113,20 +113,29 @@ export const seedNotes: BoardNote[] = [
   text('seed-14', 'Protect it or pull it down.', 0.75, 0.76, -1.8, 'sky', 3),
 ]
 
-export const seedPins: BoardPin[] = seedNotes.flatMap((note) => {
-  const radians = (note.rotation * Math.PI) / 180
-  const centerX = note.boardX + NOTE_SIZE / BOARD_WIDTH / 2
-  const centerY = note.boardY + NOTE_SIZE / BOARD_HEIGHT / 2
+export function createSeedNotes(randomTilt: boolean): BoardNote[] {
+  return structuredClone(seedNoteTemplates).map((note) => ({
+    ...note,
+    rotation: randomTilt ? note.rotation : 0,
+  }))
+}
 
-  return pinSpots.slice(0, seedPinCounts[note.id] ?? 0).map(([x, y], index) => {
-    const localX = (x - 0.5) * NOTE_SIZE
-    const localY = (y - 0.5) * NOTE_SIZE
-    const rotatedX = localX * Math.cos(radians) - localY * Math.sin(radians)
-    const rotatedY = localX * Math.sin(radians) + localY * Math.cos(radians)
-    return {
-      id: `${note.id}-pin-${index + 1}`,
-      x: centerX + rotatedX / BOARD_WIDTH,
-      y: centerY + rotatedY / BOARD_HEIGHT,
-    }
+export function createSeedPins(notes: BoardNote[], noteSize: number): BoardPin[] {
+  return notes.flatMap((note) => {
+    const radians = (note.rotation * Math.PI) / 180
+    const centerX = note.boardX + noteSize / BOARD_WIDTH / 2
+    const centerY = note.boardY + noteSize / BOARD_HEIGHT / 2
+
+    return pinSpots.slice(0, seedPinCounts[note.id] ?? 0).map(([x, y], index) => {
+      const localX = (x - 0.5) * noteSize
+      const localY = (y - 0.5) * noteSize
+      const rotatedX = localX * Math.cos(radians) - localY * Math.sin(radians)
+      const rotatedY = localX * Math.sin(radians) + localY * Math.cos(radians)
+      return {
+        id: `${note.id}-pin-${index + 1}`,
+        x: centerX + rotatedX / BOARD_WIDTH,
+        y: centerY + rotatedY / BOARD_HEIGHT,
+      }
+    })
   })
-})
+}

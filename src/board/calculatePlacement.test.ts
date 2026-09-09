@@ -5,7 +5,7 @@ const board = { left: 20, top: 80, width: 1100, height: 1000 }
 const viewport = { left: 10, top: 70, width: 1200, height: 800 }
 
 describe('calculatePlacement', () => {
-  it('places the pin under the cursor and centers the note for editing', () => {
+  it('places the note under the cursor and centers it for editing', () => {
     const selection = calculatePlacement({
       board,
       viewport,
@@ -15,7 +15,7 @@ describe('calculatePlacement', () => {
     })
 
     expect(selection.placement.boardX).toBeCloseTo(441 / 1100)
-    expect(selection.placement.boardY).toBeCloseTo(279 / 1000)
+    expect(selection.placement.boardY).toBeCloseTo(278.2 / 1000)
     expect(selection.focusX).toBeCloseTo(0.5)
     expect(selection.scale).toBeCloseTo(2.788, 2)
   })

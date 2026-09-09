@@ -1,5 +1,14 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react'
 import { MAX_TEXT_LENGTH, NOTE_COLORS } from '../constants'
+import { getTextDensityClass } from '../textSizing'
 import type { DrawingData, NoteColor, NotePlacement } from '../types'
 import { DrawingEditor } from './DrawingEditor'
 
@@ -37,6 +46,25 @@ export function NoteComposer({
   const [mode, setMode] = useState<ComposerMode>('text')
   const [color, setColor] = useState<NoteColor>(placement.color)
   const [text, setText] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const resizeTextarea = useCallback(() => {
+    const textarea = textareaRef.current
+    const container = textarea?.parentElement
+    if (!textarea || !container) return
+    textarea.style.height = '0px'
+    textarea.style.height = `${Math.min(textarea.scrollHeight, container.clientHeight)}px`
+  }, [])
+
+  useLayoutEffect(resizeTextarea, [resizeTextarea, text, mode])
+
+  useEffect(() => {
+    const container = textareaRef.current?.parentElement
+    if (!container || !('ResizeObserver' in window)) return
+    const observer = new ResizeObserver(resizeTextarea)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [mode, resizeTextarea])
 
   const style: DraftStyle = {
     '--note-x': `${placement.boardX * 100}%`,
@@ -90,15 +118,20 @@ export function NoteComposer({
 
       {mode === 'text' ? (
         <form className="draft-text" onSubmit={submitText}>
-          <textarea
-            autoFocus
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="Write something…"
-            maxLength={MAX_TEXT_LENGTH}
-            disabled={isPosting}
-            aria-label="Note text"
-          />
+          <div className="draft-text__content">
+            <textarea
+              ref={textareaRef}
+              className={getTextDensityClass(text.length)}
+              autoFocus
+              rows={1}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Write something…"
+              maxLength={MAX_TEXT_LENGTH}
+              disabled={isPosting}
+              aria-label="Note text"
+            />
+          </div>
           <span className="draft-character-count">{text.length}/{MAX_TEXT_LENGTH}</span>
           <button
             className="draft-post"

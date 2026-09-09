@@ -9,7 +9,7 @@ describe('strokesToSvg', () => {
       width: 320,
       height: 320,
       strokes: [
-        { width: 4, points: [[0.1, 0.2], [0.5, 0.75]] },
+        { width: 4, color: '#c53d2e', points: [[0.1, 0.2], [0.5, 0.75]] },
         { width: 6, points: [[0.25, 0.5]] },
       ],
     }
@@ -19,6 +19,20 @@ describe('strokesToSvg', () => {
     expect(svg).toContain('points="32.00,64.00 160.00,240.00"')
     expect(svg).toContain('cx="80.00" cy="160.00" r="3.00"')
     expect(svg).toContain('viewBox="0 0 320 320"')
+    expect(svg).toContain('stroke="#c53d2e"')
+  })
+
+  it('falls back to application-owned ink for unsafe colors', () => {
+    const unsafeDrawing: DrawingData = {
+      version: 1,
+      width: 320,
+      height: 320,
+      strokes: [{ width: 4, color: '"/><script>alert(1)</script>', points: [[0.5, 0.5]] }],
+    }
+
+    const svg = strokesToSvg(unsafeDrawing)
+    expect(svg).not.toContain('<script')
+    expect(svg).toContain('fill="#29241f"')
   })
 
   it('only generates application-owned markup', () => {

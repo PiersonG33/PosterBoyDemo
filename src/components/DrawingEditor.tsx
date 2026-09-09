@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MAX_DRAWING_POINTS, MAX_POINTS_PER_STROKE } from '../constants'
+import {
+  DEFAULT_PEN_COLOR,
+  DEFAULT_PEN_SIZE,
+  MAX_DRAWING_POINTS,
+  MAX_POINTS_PER_STROKE,
+  PEN_SIZES,
+} from '../constants'
 import type { DrawingData, DrawingPoint, DrawingStroke } from '../types'
 
 interface DrawingEditorProps {
@@ -8,14 +14,14 @@ interface DrawingEditorProps {
 }
 
 const CANVAS_SIZE = 320
-const PEN_WIDTH = 4
-
 export function DrawingEditor({ disabled = false, onPost }: DrawingEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const activeStroke = useRef<DrawingStroke | null>(null)
   const [strokes, setStrokes] = useState<DrawingStroke[]>([])
   const [isDrawing, setIsDrawing] = useState(false)
   const [previewVersion, setPreviewVersion] = useState(0)
+  const [penSize, setPenSize] = useState<number>(DEFAULT_PEN_SIZE)
+  const [penColor, setPenColor] = useState<string>(DEFAULT_PEN_COLOR)
 
   const totalPoints = strokes.reduce((sum, stroke) => sum + stroke.points.length, 0)
 
@@ -30,12 +36,13 @@ export function DrawingEditor({ disabled = false, onPost }: DrawingEditorProps) 
     canvas.height = CANVAS_SIZE * scale
     context.setTransform(scale, 0, 0, scale, 0, 0)
     context.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
-    context.strokeStyle = '#29241f'
-    context.fillStyle = '#29241f'
     context.lineCap = 'round'
     context.lineJoin = 'round'
 
     const drawStroke = (stroke: DrawingStroke) => {
+      const color = stroke.color ?? DEFAULT_PEN_COLOR
+      context.strokeStyle = color
+      context.fillStyle = color
       if (stroke.points.length === 1) {
         const [x, y] = stroke.points[0]
         context.beginPath()
@@ -72,8 +79,12 @@ export function DrawingEditor({ disabled = false, onPost }: DrawingEditorProps) 
 
   const beginStroke = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (disabled || totalPoints >= MAX_DRAWING_POINTS) return
-    event.currentTarget.setPointerCapture(event.pointerId)
-    activeStroke.current = { width: PEN_WIDTH, points: [getPoint(event)] }
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // A pointer can end between dispatch and capture; the stroke still works in-bounds.
+    }
+    activeStroke.current = { width: penSize, color: penColor, points: [getPoint(event)] }
     setIsDrawing(true)
     setPreviewVersion((version) => version + 1)
   }
@@ -125,8 +136,32 @@ export function DrawingEditor({ disabled = false, onPost }: DrawingEditorProps) 
         )}
       </div>
       <div className="drawing-toolbar">
-        <span className="pen-label"><i aria-hidden="true" /> Black pen</span>
-        <div>
+        <div className="pen-sizes" role="group" aria-label="Pen size">
+          {PEN_SIZES.map((size) => (
+            <button
+              key={size}
+              className={penSize === size ? 'is-active' : ''}
+              type="button"
+              disabled={disabled}
+              aria-label={`${size === 2 ? 'Fine' : size === 4 ? 'Medium' : 'Broad'} pen`}
+              aria-pressed={penSize === size}
+              onClick={() => setPenSize(size)}
+            >
+              <span className={`pen-size-dot pen-size-dot--${size}`} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+        <label className="pen-color" title="Pen color">
+          <input
+            type="color"
+            value={penColor}
+            disabled={disabled}
+            aria-label="Pen color"
+            onChange={(event) => setPenColor(event.currentTarget.value)}
+          />
+          <span style={{ backgroundColor: penColor }} aria-hidden="true" />
+        </label>
+        <div className="drawing-history">
           <button type="button" onClick={() => setStrokes((existing) => existing.slice(0, -1))} disabled={strokes.length === 0 || disabled}>Undo</button>
           <button type="button" onClick={clear} disabled={strokes.length === 0 || disabled}>Clear</button>
         </div>

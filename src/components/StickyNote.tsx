@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { NOTE_REMOVAL_HOLD_MS } from '../constants'
+import { getTextDensityClass } from '../textSizing'
 import type { BoardNote } from '../types'
 import { DrawingNote } from './DrawingNote'
 import { useHoldAction } from './useHoldAction'
@@ -71,7 +72,7 @@ export function StickyNote({
       <div className={`sticky sticky--${note.color} ${note.contentType === 'drawing' ? 'sticky--drawing' : ''}`}>
         <div className="sticky__content">
           {note.contentType === 'text' ? (
-            <p>{note.textContent}</p>
+            <p className={getTextDensityClass(note.textContent.length)}>{note.textContent}</p>
           ) : (
             <DrawingNote drawing={note.drawingData} />
           )}

@@ -1,6 +1,10 @@
 import type { DrawingData, DrawingPoint } from '../types'
+import { DEFAULT_PEN_COLOR } from '../constants'
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value))
+const safeColor = (color: string | undefined) => color && /^#[0-9a-f]{6}$/i.test(color)
+  ? color
+  : DEFAULT_PEN_COLOR
 
 const pointToCoordinate = (
   point: DrawingPoint,
@@ -12,16 +16,17 @@ export function strokesToSvg(drawing: DrawingData): string {
   const paths = drawing.strokes
     .filter((stroke) => stroke.points.length > 0)
     .map((stroke) => {
+      const color = safeColor(stroke.color)
       const coordinates = stroke.points
         .map((point) => pointToCoordinate(point, drawing.width, drawing.height))
         .join(' ')
 
       if (stroke.points.length === 1) {
         const [x, y] = stroke.points[0]
-        return `<circle cx="${(clamp(x) * drawing.width).toFixed(2)}" cy="${(clamp(y) * drawing.height).toFixed(2)}" r="${(stroke.width / 2).toFixed(2)}" fill="#27231f"/>`
+        return `<circle cx="${(clamp(x) * drawing.width).toFixed(2)}" cy="${(clamp(y) * drawing.height).toFixed(2)}" r="${(stroke.width / 2).toFixed(2)}" fill="${color}"/>`
       }
 
-      return `<polyline points="${coordinates}" fill="none" stroke="#27231f" stroke-width="${stroke.width}" stroke-linecap="round" stroke-linejoin="round"/>`
+      return `<polyline points="${coordinates}" fill="none" stroke="${color}" stroke-width="${stroke.width}" stroke-linecap="round" stroke-linejoin="round"/>`
     })
     .join('')
 

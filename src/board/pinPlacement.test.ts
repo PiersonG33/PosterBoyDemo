@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOARD_WIDTH, PIN_COLLISION_DISTANCE } from '../constants'
+import { BOARD_WIDTH, PIN_COLLISION_DISTANCE, REFERENCE_NOTE_SIZE } from '../constants'
 import type { BoardNote, BoardPin } from '../types'
 import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from './pinPlacement'
 
@@ -35,11 +35,11 @@ describe('board pin geometry', () => {
       removedAt: null,
     }
 
-    expect(pinTouchesNote({ x: 0.3, y: 0.3 }, note)).toBe(true)
-    expect(pinTouchesNote({ x: 0.65, y: 0.65 }, note)).toBe(false)
+    expect(pinTouchesNote({ x: 0.3, y: 0.3 }, note, REFERENCE_NOTE_SIZE)).toBe(true)
+    expect(pinTouchesNote({ x: 0.65, y: 0.65 }, note, REFERENCE_NOTE_SIZE)).toBe(false)
 
     const overlappingNote = { ...note, id: 'note-2', createdAt: '2026-09-08T12:01:00.000Z' }
-    expect(noteHasPins(note, [{ id: 'shared-pin', x: 0.3, y: 0.3 }])).toBe(true)
-    expect(pinTouchesNote({ x: 0.3, y: 0.3 }, overlappingNote)).toBe(true)
+    expect(noteHasPins(note, [{ id: 'shared-pin', x: 0.3, y: 0.3 }], REFERENCE_NOTE_SIZE)).toBe(true)
+    expect(pinTouchesNote({ x: 0.3, y: 0.3 }, overlappingNote, REFERENCE_NOTE_SIZE)).toBe(true)
   })
 })

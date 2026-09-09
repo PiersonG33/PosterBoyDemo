@@ -13,6 +13,7 @@ export type DrawingPoint = readonly [number, number]
 
 export interface DrawingStroke {
   width: number
+  color?: string
   points: DrawingPoint[]
 }
 

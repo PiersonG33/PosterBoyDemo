@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { calculatePlacement } from '../board/calculatePlacement'
 import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from '../board/pinPlacement'
-import { NOTE_WIDTH_ON_BOARD } from '../constants'
+import { BOARD_WIDTH } from '../constants'
 import type { BoardNote, BoardPin, PinPosition, PlacementSelection } from '../types'
 import { PositionedPin } from './PositionedPin'
 import { StickyNote } from './StickyNote'
@@ -12,6 +12,8 @@ interface CorkboardProps {
   pendingNoteId: string | null
   isPlacing: boolean
   isPinning: boolean
+  noteSize: number
+  noteRotation: number
   selection: PlacementSelection | null
   onPlace: (selection: PlacementSelection) => void
   onPlacePin: (position: PinPosition) => void
@@ -28,12 +30,19 @@ type FocusStyle = CSSProperties & {
   '--focus-scale'?: number
 }
 
+type BoardStyle = CSSProperties & {
+  '--note-size': string
+  '--ghost-rotation': string
+}
+
 export function Corkboard({
   notes,
   pins,
   pendingNoteId,
   isPlacing,
   isPinning,
+  noteSize,
+  noteRotation,
   selection,
   onPlace,
   onPlacePin,
@@ -60,6 +69,10 @@ export function Corkboard({
     '--focus-offset-y': `${selection.offsetY}px`,
     '--focus-scale': selection.scale,
   } : {}
+  const boardStyle: BoardStyle = {
+    '--note-size': `${noteSize / BOARD_WIDTH * 100}%`,
+    '--ghost-rotation': `${noteRotation}deg`,
+  }
 
   const updateGhost = (event: React.PointerEvent<HTMLElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
@@ -73,7 +86,7 @@ export function Corkboard({
         x: Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width)),
         y: Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height)),
       }
-      const touchesNote = notes.some((note) => pinTouchesNote(position, note))
+      const touchesNote = notes.some((note) => pinTouchesNote(position, note, noteSize))
       setGhostPin({
         ...position,
         available: overNote && touchesNote && isPinPositionAvailable(pins, position),
@@ -89,13 +102,14 @@ export function Corkboard({
     if (!isPlacing || !boardRef.current || !viewportRef.current) return
     const boardBounds = boardRef.current.getBoundingClientRect()
     const viewportBounds = viewportRef.current.getBoundingClientRect()
-    const noteSize = boardBounds.width * NOTE_WIDTH_ON_BOARD
+    const renderedNoteSize = boardBounds.width * noteSize / BOARD_WIDTH
     onPlace(calculatePlacement({
       board: boardBounds,
       viewport: viewportBounds,
       clientX: event.clientX,
       clientY: event.clientY,
-      noteSize,
+      noteSize: renderedNoteSize,
+      rotation: noteRotation,
     }))
     setGhostPosition(null)
   }
@@ -107,6 +121,7 @@ export function Corkboard({
           <section
             ref={boardRef}
             className="corkboard"
+            style={boardStyle}
             aria-label={`Shared corkboard with ${activeCount} notes`}
             onPointerMove={updateGhost}
             onPointerEnter={updateGhost}
@@ -123,7 +138,7 @@ export function Corkboard({
                 stackIndex={stackIndex}
                 isPending={pendingNoteId === note.id}
                 removalLocked={isPinning || isPlacing || Boolean(selection)}
-                isPinned={noteHasPins(note, pins)}
+                isPinned={noteHasPins(note, pins, noteSize)}
                 onRemove={() => onRemoveNote(note.id)}
               />
             ))}

@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react'
 import { useBoard } from './board/useBoard'
 import { ActionMeter } from './components/ActionMeter'
 import { Corkboard } from './components/Corkboard'
+import { DebugPanel } from './components/DebugPanel'
 import { NoteComposer } from './components/NoteComposer'
+import { getNoteSize, getRandomNoteRotation, readDemoSettings } from './demoSettings'
 import type { DrawingData, NoteColor, PlacementSelection } from './types'
 
 export default function App() {
+  const [settings] = useState(readDemoSettings)
+  const noteSize = getNoteSize(settings)
   const {
     snapshot,
     pendingNoteId,
@@ -17,10 +21,12 @@ export default function App() {
     addPin,
     removePin,
     removeNote,
-  } = useBoard()
+    resetBoard,
+  } = useBoard(settings)
   const [isPlacing, setIsPlacing] = useState(false)
   const [isPinning, setIsPinning] = useState(false)
   const [selection, setSelection] = useState<PlacementSelection | null>(null)
+  const [placementRotation, setPlacementRotation] = useState(0)
 
   useEffect(() => {
     if (!message) return
@@ -83,6 +89,7 @@ export default function App() {
                 setSelection(null)
               } else {
                 setIsPinning(false)
+                setPlacementRotation(settings.randomTilt ? getRandomNoteRotation() : 0)
                 setIsPlacing(true)
               }
             }}
@@ -101,6 +108,8 @@ export default function App() {
         pendingNoteId={pendingNoteId}
         isPlacing={isPlacing}
         isPinning={isPinning}
+        noteSize={noteSize}
+        noteRotation={placementRotation}
         selection={selection}
         onPlace={(nextSelection) => {
           setIsPlacing(false)
@@ -140,6 +149,17 @@ export default function App() {
           <button type="button" onClick={clearMessage} aria-label="Dismiss message">×</button>
         </div>
       )}
+
+      <DebugPanel
+        settings={settings}
+        isBusy={isPosting}
+        onResetBoard={async () => {
+          setIsPlacing(false)
+          setIsPinning(false)
+          setSelection(null)
+          return resetBoard()
+        }}
+      />
     </div>
   )
 }

@@ -4,7 +4,8 @@ import {
   MAX_ACTIVE_NOTES,
   MAX_TEXT_LENGTH,
 } from '../constants'
-import { seedNotes, seedPins } from '../data/seedNotes'
+import { createSeedNotes, createSeedPins } from '../data/seedNotes'
+import { getNoteSize, type DemoSettings } from '../demoSettings'
 import { validateDrawing } from '../drawing/validation'
 import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from './pinPlacement'
 import type {
@@ -18,12 +19,12 @@ import type {
 } from '../types'
 import { BoardActionError, type BoardGateway } from './BoardGateway'
 
-const STORAGE_KEY = 'poster-boy-board-v3'
+const STORAGE_KEY_PREFIX = 'poster-boy-board-v4'
 const ACTOR_KEY = 'poster-boy-visitor-v1'
 const CHANNEL_NAME = 'poster-boy-board-events'
 
 interface StoredBoard {
-  version: 3
+  version: 4
   notes: BoardNote[]
   pins: BoardPin[]
   budgets: Record<string, ActionBudget>
@@ -36,17 +37,18 @@ const freshBudget = (now = Date.now()): ActionBudget => ({
   windowEndsAt: new Date(now + ACTION_WINDOW_MS).toISOString(),
 })
 
-const cloneSeedNotes = () => structuredClone(seedNotes)
-const cloneSeedPins = () => structuredClone(seedPins)
-
 export class LocalBoardGateway implements BoardGateway {
   private readonly actorId: string
   private readonly channel: BroadcastChannel | null
+  private readonly noteSize: number
+  private readonly storageKey: string
 
-  constructor() {
+  constructor(private readonly settings: DemoSettings) {
     const existingActor = sessionStorage.getItem(ACTOR_KEY)
     this.actorId = existingActor ?? crypto.randomUUID()
     sessionStorage.setItem(ACTOR_KEY, this.actorId)
+    this.noteSize = getNoteSize(settings)
+    this.storageKey = `${STORAGE_KEY_PREFIX}-${settings.noteSizePercent}-${settings.randomTilt ? 'tilted' : 'straight'}`
     this.channel = 'BroadcastChannel' in window ? new BroadcastChannel(CHANNEL_NAME) : null
   }
 
@@ -57,6 +59,13 @@ export class LocalBoardGateway implements BoardGateway {
     return this.toSnapshot(board, budget)
   }
 
+  async reset(): Promise<BoardSnapshot> {
+    const board = this.createFreshBoard()
+    const budget = this.getCurrentBudget(board)
+    this.writeBoard(board, true)
+    return this.toSnapshot(board, budget)
+  }
+
   subscribe(onChange: (snapshot: BoardSnapshot) => void): () => void {
     const readLatestForThisVisitor = () => {
       const board = this.readBoard()
@@ -64,7 +73,7 @@ export class LocalBoardGateway implements BoardGateway {
     }
     const onBroadcast = () => readLatestForThisVisitor()
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY) return
+      if (event.key !== this.storageKey) return
       readLatestForThisVisitor()
     }
 
@@ -121,7 +130,7 @@ export class LocalBoardGateway implements BoardGateway {
       if (!isPinPositionAvailable(board.pins, position)) {
         throw new BoardActionError('Place this pin a little farther from the others.')
       }
-      if (!board.notes.some((note) => pinTouchesNote(position, note))) {
+      if (!board.notes.some((note) => pinTouchesNote(position, note, this.noteSize))) {
         throw new BoardActionError('Pins need to touch at least one note.')
       }
       board.pins.push({ id: crypto.randomUUID(), ...position })
@@ -139,7 +148,9 @@ export class LocalBoardGateway implements BoardGateway {
   async removeNote(noteId: string): Promise<BoardSnapshot> {
     return this.mutate((board) => {
       const note = this.findActiveNote(board.notes, noteId)
-      if (noteHasPins(note, board.pins)) throw new BoardActionError('Remove the pins before taking this note down.')
+      if (noteHasPins(note, board.pins, this.noteSize)) {
+        throw new BoardActionError('Remove the pins before taking this note down.')
+      }
       note.removedAt = new Date().toISOString()
     })
   }
@@ -181,22 +192,32 @@ export class LocalBoardGateway implements BoardGateway {
   }
 
   private readBoard(): StoredBoard {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return { version: 3, notes: cloneSeedNotes(), pins: cloneSeedPins(), budgets: {} }
+    const stored = localStorage.getItem(this.storageKey)
+    if (!stored) return this.createFreshBoard()
 
     try {
       const parsed = JSON.parse(stored) as StoredBoard
-      if (parsed.version !== 3 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
+      if (parsed.version !== 4 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
         throw new Error('Invalid board')
       }
       return parsed
     } catch {
-      return { version: 3, notes: cloneSeedNotes(), pins: cloneSeedPins(), budgets: {} }
+      return this.createFreshBoard()
+    }
+  }
+
+  private createFreshBoard(): StoredBoard {
+    const notes = createSeedNotes(this.settings.randomTilt)
+    return {
+      version: 4,
+      notes,
+      pins: createSeedPins(notes, this.noteSize),
+      budgets: {},
     }
   }
 
   private writeBoard(board: StoredBoard, announce: boolean) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(board))
+    localStorage.setItem(this.storageKey, JSON.stringify(board))
     if (announce) this.channel?.postMessage({ type: 'board-changed' })
   }
 

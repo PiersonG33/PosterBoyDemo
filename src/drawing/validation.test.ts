@@ -20,6 +20,17 @@ describe('validateDrawing', () => {
     expect(validateDrawing(drawing([[1.01, 0.5]]))).toMatch(/outside/)
   })
 
+  it('accepts hex ink colors and rejects arbitrary color markup', () => {
+    expect(validateDrawing({
+      ...drawing([[0.5, 0.5]]),
+      strokes: [{ width: 2, color: '#245f9e', points: [[0.5, 0.5]] }],
+    })).toBeNull()
+    expect(validateDrawing({
+      ...drawing([[0.5, 0.5]]),
+      strokes: [{ width: 2, color: 'url(bad)', points: [[0.5, 0.5]] }],
+    })).toMatch(/color/)
+  })
+
   it('enforces stroke and point limits', () => {
     const tooManyStrokes: DrawingData = {
       ...drawing([[0.5, 0.5]]),

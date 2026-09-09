@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { BoardGateway } from './BoardGateway'
 import { LocalBoardGateway } from './localBoardGateway'
+import type { DemoSettings } from '../demoSettings'
 import type { BoardSnapshot, DrawingData, NotePlacement, PinPosition } from '../types'
 
 type Mutation = () => Promise<BoardSnapshot>
 
-export function useBoard() {
-  const gateway = useMemo<BoardGateway>(() => new LocalBoardGateway(), [])
+export function useBoard(settings: DemoSettings) {
+  const gateway = useMemo<BoardGateway>(() => new LocalBoardGateway(settings), [settings])
   const [snapshot, setSnapshot] = useState<BoardSnapshot | null>(null)
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null)
   const [isPosting, setIsPosting] = useState(false)
@@ -72,6 +73,7 @@ export function useBoard() {
     isPosting,
     message,
     clearMessage: () => setMessage(null),
+    resetBoard: () => runMutation(() => gateway.reset()),
     createText: (text: string, placement: NotePlacement) =>
       runMutation(() => gateway.createText(text, placement)),
     createDrawing: (drawing: DrawingData, placement: NotePlacement) =>
