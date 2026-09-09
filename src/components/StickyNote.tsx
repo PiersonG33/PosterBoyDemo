@@ -17,7 +17,10 @@ type NoteStyle = CSSProperties & {
   '--note-x': string
   '--note-y': string
   '--note-rotation': string
-  '--hold-duration': string
+  '--trace-segment-duration': string
+  '--trace-second-segment-delay': string
+  '--trace-third-segment-delay': string
+  '--trace-fourth-segment-delay': string
 }
 
 export function StickyNote({
@@ -28,6 +31,7 @@ export function StickyNote({
   isPinned,
   onRemove,
 }: StickyNoteProps) {
+  const traceSegmentDuration = (NOTE_REMOVAL_HOLD_MS - 40) / 4
   const removalDisabled = isPending || removalLocked || isPinned || note.removedAt !== null
   const hold = useHoldAction({
     disabled: removalDisabled,
@@ -39,7 +43,10 @@ export function StickyNote({
     '--note-x': `${note.boardX * 100}%`,
     '--note-y': `${note.boardY * 100}%`,
     '--note-rotation': `${note.rotation}deg`,
-    '--hold-duration': `${NOTE_REMOVAL_HOLD_MS}ms`,
+    '--trace-segment-duration': `${traceSegmentDuration}ms`,
+    '--trace-second-segment-delay': `${traceSegmentDuration}ms`,
+    '--trace-third-segment-delay': `${traceSegmentDuration * 2}ms`,
+    '--trace-fourth-segment-delay': `${traceSegmentDuration * 3}ms`,
     zIndex: stackIndex + 1,
   }
 
@@ -71,9 +78,12 @@ export function StickyNote({
         </div>
 
         {hold.isHolding && (
-          <svg className="note-hold-trace" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <rect x="1" y="1" width="98" height="98" rx="0.5" />
-          </svg>
+          <span className="note-hold-trace" aria-hidden="true">
+            <i className="note-hold-trace__segment note-hold-trace__segment--top" />
+            <i className="note-hold-trace__segment note-hold-trace__segment--right" />
+            <i className="note-hold-trace__segment note-hold-trace__segment--bottom" />
+            <i className="note-hold-trace__segment note-hold-trace__segment--left" />
+          </span>
         )}
       </div>
     </article>
