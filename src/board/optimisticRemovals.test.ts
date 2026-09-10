@@ -33,8 +33,13 @@ describe('optimistic removals', () => {
   it('marks a note removed and hides a pin before the server responds', () => {
     const optimistic = applyOptimisticRemovals(
       snapshot,
-      new Map([['note-1', '2026-09-09T12:05:00.000Z']]),
+      new Map([['note-1', {
+        removedAt: '2026-09-09T12:05:00.000Z',
+        hideAfter: 1_000,
+        releaseAfter: null,
+      }]]),
       new Set(['pin-1']),
+      500,
     )
 
     expect(optimistic.notes[0].removedAt).toBe('2026-09-09T12:05:00.000Z')
@@ -43,7 +48,7 @@ describe('optimistic removals', () => {
     expect(snapshot.pins).toHaveLength(1)
   })
 
-  it('leaves an authoritative removal timestamp intact', () => {
+  it('keeps the local animation stable when the server echoes its own timestamp', () => {
     const authoritative = {
       ...snapshot,
       notes: [{ ...snapshot.notes[0], removedAt: '2026-09-09T12:04:00.000Z' }],
@@ -51,10 +56,45 @@ describe('optimistic removals', () => {
 
     const optimistic = applyOptimisticRemovals(
       authoritative,
-      new Map([['note-1', '2026-09-09T12:05:00.000Z']]),
+      new Map([['note-1', {
+        removedAt: '2026-09-09T12:05:00.000Z',
+        hideAfter: 1_000,
+        releaseAfter: 6_000,
+      }]]),
       new Set(),
+      500,
     )
 
-    expect(optimistic.notes[0].removedAt).toBe('2026-09-09T12:04:00.000Z')
+    expect(optimistic.notes[0].removedAt).toBe('2026-09-09T12:05:00.000Z')
+  })
+
+  it('suppresses server echoes after the local animation has finished', () => {
+    const optimistic = applyOptimisticRemovals(
+      snapshot,
+      new Map([['note-1', {
+        removedAt: '2026-09-09T12:05:00.000Z',
+        hideAfter: 1_000,
+        releaseAfter: 6_000,
+      }]]),
+      new Set(),
+      1_001,
+    )
+
+    expect(optimistic.notes).toEqual([])
+  })
+
+  it('releases the tombstone after its server-echo grace period', () => {
+    const optimistic = applyOptimisticRemovals(
+      snapshot,
+      new Map([['note-1', {
+        removedAt: '2026-09-09T12:05:00.000Z',
+        hideAfter: 1_000,
+        releaseAfter: 6_000,
+      }]]),
+      new Set(),
+      6_000,
+    )
+
+    expect(optimistic.notes).toEqual(snapshot.notes)
   })
 })

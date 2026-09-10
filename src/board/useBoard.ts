@@ -4,9 +4,13 @@ import type { DemoSettings } from '../demoSettings'
 import type { BoardSnapshot, DrawingData, NotePlacement, PinPosition } from '../types'
 import type { BoardConnectionStatus, BoardGateway } from './BoardGateway'
 import { createBoardGateway } from './createBoardGateway'
-import { applyOptimisticRemovals } from './optimisticRemovals'
+import {
+  applyOptimisticRemovals,
+  type OptimisticNoteRemoval,
+} from './optimisticRemovals'
 
 type Mutation = () => Promise<BoardSnapshot>
+const NOTE_REMOVAL_ECHO_SUPPRESSION_MS = 5_000
 
 export function useBoard(settings: DemoSettings) {
   const gateway = useMemo<BoardGateway>(() => createBoardGateway(settings), [settings])
@@ -17,13 +21,21 @@ export function useBoard(settings: DemoSettings) {
   const [connectionStatus, setConnectionStatus] = useState<BoardConnectionStatus>(
     gateway.mode === 'local' ? 'local' : 'connecting',
   )
-  const optimisticNoteRemovals = useRef(new Map<string, string>())
+  const optimisticNoteRemovals = useRef(new Map<string, OptimisticNoteRemoval>())
   const optimisticPinRemovals = useRef(new Set<string>())
   const acceptSnapshot = useCallback((next: BoardSnapshot) => {
+    const now = Date.now()
+    for (const [id, removal] of optimisticNoteRemovals.current) {
+      if (removal.releaseAfter !== null && now >= removal.releaseAfter) {
+        optimisticNoteRemovals.current.delete(id)
+      }
+    }
+
     setSnapshot(applyOptimisticRemovals(
       next,
       optimisticNoteRemovals.current,
       optimisticPinRemovals.current,
+      now,
     ))
   }, [])
 
@@ -107,7 +119,12 @@ export function useBoard(settings: DemoSettings) {
     setMessage(null)
     if (kind === 'note') {
       setPendingNoteId(id)
-      optimisticNoteRemovals.current.set(id, new Date().toISOString())
+      const now = Date.now()
+      optimisticNoteRemovals.current.set(id, {
+        removedAt: new Date(now).toISOString(),
+        hideAfter: now + (settings.curvedPeel ? REMOVED_NOTE_RETENTION_MS : 500),
+        releaseAfter: null,
+      })
     } else {
       setIsPosting(true)
       optimisticPinRemovals.current.add(id)
@@ -123,8 +140,15 @@ export function useBoard(settings: DemoSettings) {
 
     try {
       const next = await mutation()
-      if (kind === 'note') optimisticNoteRemovals.current.delete(id)
-      else optimisticPinRemovals.current.delete(id)
+      if (kind === 'note') {
+        const removal = optimisticNoteRemovals.current.get(id)
+        if (removal) {
+          optimisticNoteRemovals.current.set(id, {
+            ...removal,
+            releaseAfter: Date.now() + NOTE_REMOVAL_ECHO_SUPPRESSION_MS,
+          })
+        }
+      } else optimisticPinRemovals.current.delete(id)
       acceptSnapshot(next)
       return true
     } catch (error) {
@@ -142,7 +166,13 @@ export function useBoard(settings: DemoSettings) {
       setPendingNoteId(null)
       setIsPosting(false)
     }
-  }, [acceptSnapshot, gateway])
+  }, [acceptSnapshot, gateway, settings.curvedPeel])
+
+  const resetBoard = useCallback(() => {
+    optimisticNoteRemovals.current.clear()
+    optimisticPinRemovals.current.clear()
+    return runMutation(() => gateway.reset())
+  }, [gateway, runMutation])
 
   return {
     snapshot,
@@ -152,7 +182,7 @@ export function useBoard(settings: DemoSettings) {
     connectionStatus,
     gatewayMode: gateway.mode,
     clearMessage: () => setMessage(null),
-    resetBoard: () => runMutation(() => gateway.reset()),
+    resetBoard,
     createText: (text: string, placement: NotePlacement) =>
       runMutation(() => gateway.createText(text, placement)),
     createDrawing: (drawing: DrawingData, placement: NotePlacement) =>
