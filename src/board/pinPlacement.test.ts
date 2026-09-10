@@ -3,7 +3,12 @@ import { BOARD_WIDTH, PIN_COLLISION_DISTANCE, REFERENCE_NOTE_SIZE } from '../con
 import type { BoardNote, BoardPin } from '../types'
 import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from './pinPlacement'
 
-const pins: BoardPin[] = [{ id: 'pin-1', x: 0.5, y: 0.5 }]
+const pins: BoardPin[] = [{
+  id: 'pin-1',
+  createdAt: '2026-09-08T12:02:00.000Z',
+  x: 0.5,
+  y: 0.5,
+}]
 
 describe('board pin geometry', () => {
   it('allows pins anywhere on the board while preventing center overlap', () => {
@@ -39,7 +44,35 @@ describe('board pin geometry', () => {
     expect(pinTouchesNote({ x: 0.65, y: 0.65 }, note, REFERENCE_NOTE_SIZE)).toBe(false)
 
     const overlappingNote = { ...note, id: 'note-2', createdAt: '2026-09-08T12:01:00.000Z' }
-    expect(noteHasPins(note, [{ id: 'shared-pin', x: 0.3, y: 0.3 }], REFERENCE_NOTE_SIZE)).toBe(true)
+    expect(noteHasPins(note, [{
+      id: 'shared-pin',
+      createdAt: '2026-09-08T12:02:00.000Z',
+      x: 0.3,
+      y: 0.3,
+    }], REFERENCE_NOTE_SIZE)).toBe(true)
     expect(pinTouchesNote({ x: 0.3, y: 0.3 }, overlappingNote, REFERENCE_NOTE_SIZE)).toBe(true)
+  })
+
+  it('does not treat an older pin as piercing a newer note placed over it', () => {
+    const note: BoardNote = {
+      id: 'new-note',
+      createdAt: '2026-09-08T12:03:00.000Z',
+      contentType: 'text',
+      textContent: 'on top',
+      drawingData: null,
+      boardX: 0.4,
+      boardY: 0.4,
+      rotation: 0,
+      color: 'mint',
+      removedAt: null,
+    }
+    const olderPin: BoardPin = {
+      id: 'old-pin',
+      createdAt: '2026-09-08T12:02:00.000Z',
+      x: 0.48,
+      y: 0.52,
+    }
+
+    expect(noteHasPins(note, [olderPin], REFERENCE_NOTE_SIZE)).toBe(false)
   })
 })

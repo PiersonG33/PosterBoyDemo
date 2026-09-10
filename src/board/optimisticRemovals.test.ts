@@ -15,7 +15,12 @@ const snapshot: BoardSnapshot = {
     color: 'butter',
     removedAt: null,
   }],
-  pins: [{ id: 'pin-1', x: 0.25, y: 0.35 }],
+  pins: [{
+    id: 'pin-1',
+    createdAt: '2026-09-09T12:01:00.000Z',
+    x: 0.25,
+    y: 0.35,
+  }],
   budget: {
     limit: 20,
     used: 0,

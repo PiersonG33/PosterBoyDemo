@@ -643,6 +643,16 @@ button:disabled {
   font-size: 10.1cqw;
 }
 
+.ghost-note--blocked {
+  opacity: .34;
+  filter: grayscale(.85);
+  box-shadow: 0 0 0 3px rgb(117 42 31 / 62%), 7px 10px 18px rgb(56 25 8 / 16%);
+}
+
+.ghost-note--blocked > span {
+  color: #762a1f;
+}
+
 .placement-hint {
   position: absolute;
   left: 50%;

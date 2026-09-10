@@ -137,6 +137,7 @@ export function createSeedPins(notes: BoardNote[], noteSize: number): BoardPin[]
       const rotatedY = localX * Math.sin(radians) + localY * Math.cos(radians)
       return {
         id: `${note.id}-pin-${index + 1}`,
+        createdAt: '2026-09-08T12:30:00.000Z',
         x: centerX + rotatedX / BOARD_WIDTH,
         y: centerY + rotatedY / BOARD_HEIGHT,
       }

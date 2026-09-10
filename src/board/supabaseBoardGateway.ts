@@ -30,6 +30,7 @@ interface NoteRow {
 
 interface PinRow {
   id: string
+  created_at: string
   x: number
   y: number
 }
@@ -271,7 +272,7 @@ export class SupabaseBoardGateway implements BoardGateway {
         .order('created_at', { ascending: true }),
       this.client
         .from('pins')
-        .select('id, x, y')
+        .select('id, created_at, x, y')
         .eq('board_id', boardId)
         .order('created_at', { ascending: true }),
       this.client.rpc('get_action_budget', { p_board_slug: this.boardSlug }),
@@ -283,7 +284,12 @@ export class SupabaseBoardGateway implements BoardGateway {
 
     return {
       notes: (notesResult.data as NoteRow[]).map(mapRemoteNote),
-      pins: (pinsResult.data as PinRow[]).map((pin) => ({ id: pin.id, x: pin.x, y: pin.y })),
+      pins: (pinsResult.data as PinRow[]).map((pin) => ({
+        id: pin.id,
+        createdAt: pin.created_at,
+        x: pin.x,
+        y: pin.y,
+      })),
       budget: parseRemoteBudget(budgetResult.data),
     }
   }

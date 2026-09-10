@@ -1,5 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { calculatePlacement } from '../board/calculatePlacement'
+import { getBoardLayers, noteLayerKey, pinLayerKey } from '../board/boardLayers'
+import { isNotePlacementAvailable } from '../board/notePlacement'
 import { isPinPositionAvailable, noteHasPins, pinTouchesNote } from '../board/pinPlacement'
 import { BOARD_WIDTH, REFERENCE_NOTE_SIZE } from '../constants'
 import type { BoardNote, BoardPin, PinPosition, PlacementSelection } from '../types'
@@ -62,15 +64,22 @@ export function Corkboard({
 }: CorkboardProps) {
   const boardRef = useRef<HTMLElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [ghostPosition, setGhostPosition] = useState<{ x: number; y: number } | null>(null)
+  const [ghostPosition, setGhostPosition] = useState<{
+    x: number
+    y: number
+    available: boolean
+  } | null>(null)
   const [ghostPin, setGhostPin] = useState<(PinPosition & { available: boolean }) | null>(null)
   const activeCount = notes.filter((note) => note.removedAt === null).length
+  const layerByKey = getBoardLayers(notes, pins)
   const orderedNotes = notes
-    .map((note, originalIndex) => ({ note, originalIndex }))
+    .map((note) => ({ note, layer: layerByKey.get(noteLayerKey(note.id)) ?? 0 }))
     .sort((a, b) => {
-      const dateDifference = Date.parse(a.note.createdAt) - Date.parse(b.note.createdAt)
-      return dateDifference || a.originalIndex - b.originalIndex
+      return a.layer - b.layer
     })
+  const orderedPins = pins
+    .map((pin) => ({ pin, layer: layerByKey.get(pinLayerKey(pin.id)) ?? 0 }))
+    .sort((a, b) => a.layer - b.layer)
 
   const focusStyle: FocusStyle = selection ? {
     '--focus-x': `${selection.focusX * 100}%`,
@@ -96,10 +105,34 @@ export function Corkboard({
     '--pin-hover-lift': pinLength(-2),
   }
 
+  const placementAt = (clientX: number, clientY: number) => {
+    if (!boardRef.current || !viewportRef.current) return null
+    const boardBounds = boardRef.current.getBoundingClientRect()
+    const viewportBounds = viewportRef.current.getBoundingClientRect()
+    const renderedNoteSize = boardBounds.width * noteSize / BOARD_WIDTH
+    return calculatePlacement({
+      board: boardBounds,
+      viewport: viewportBounds,
+      clientX,
+      clientY,
+      noteSize: renderedNoteSize,
+      rotation: noteRotation,
+    })
+  }
+
   const updateGhost = (event: React.PointerEvent<HTMLElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
     if (isPlacing) {
-      setGhostPosition({ x: event.clientX - bounds.left, y: event.clientY - bounds.top })
+      const candidate = placementAt(event.clientX, event.clientY)
+      setGhostPosition({
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+        available: Boolean(candidate && isNotePlacementAvailable(
+          notes,
+          candidate.placement,
+          noteSize,
+        )),
+      })
     }
     if (isPinning) {
       const target = event.target as Element
@@ -121,18 +154,10 @@ export function Corkboard({
       if (ghostPin?.available) onPlacePin(ghostPin)
       return
     }
-    if (!isPlacing || !boardRef.current || !viewportRef.current) return
-    const boardBounds = boardRef.current.getBoundingClientRect()
-    const viewportBounds = viewportRef.current.getBoundingClientRect()
-    const renderedNoteSize = boardBounds.width * noteSize / BOARD_WIDTH
-    onPlace(calculatePlacement({
-      board: boardBounds,
-      viewport: viewportBounds,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      noteSize: renderedNoteSize,
-      rotation: noteRotation,
-    }))
+    if (!isPlacing) return
+    const candidate = placementAt(event.clientX, event.clientY)
+    if (!candidate || !isNotePlacementAvailable(notes, candidate.placement, noteSize)) return
+    onPlace(candidate)
     setGhostPosition(null)
   }
 
@@ -153,11 +178,11 @@ export function Corkboard({
             }}
             onClick={handleBoardClick}
           >
-            {orderedNotes.map(({ note }, stackIndex) => (
+            {orderedNotes.map(({ note, layer }) => (
               <StickyNote
                 key={note.id}
                 note={note}
-                stackIndex={stackIndex}
+                stackIndex={layer}
                 isPending={pendingNoteId === note.id}
                 removalLocked={isPinning || isPlacing || Boolean(selection)}
                 isPinned={noteHasPins(note, pins, noteSize)}
@@ -167,18 +192,19 @@ export function Corkboard({
             ))}
             {isPlacing && ghostPosition && (
               <div
-                className="ghost-note sticky--butter"
+                className={`ghost-note sticky--butter ${ghostPosition.available ? '' : 'ghost-note--blocked'}`}
                 style={{ left: ghostPosition.x, top: ghostPosition.y }}
                 aria-hidden="true"
               >
-                <span>Place note</span>
+                <span>{ghostPosition.available ? 'Place note' : 'Too much overlap'}</span>
               </div>
             )}
             {children}
-            {pins.map((pin) => (
+            {orderedPins.map(({ pin, layer }) => (
               <PositionedPin
                 key={pin.id}
                 pin={pin}
+                stackIndex={layer}
                 disabled={isPinning || isPlacing || Boolean(selection)}
                 onRemove={() => onRemovePin(pin.id)}
               />
@@ -195,7 +221,11 @@ export function Corkboard({
       </div>
       {(isPlacing || isPinning) && (
         <div className="placement-hint" role="status">
-          {isPlacing ? 'Move over the board and click to place your note' : 'Move over a note and click to place the pin'}
+          {isPlacing
+            ? ghostPosition && !ghostPosition.available
+              ? 'Move the note so existing centers stay visible'
+              : 'Move over the board and click to place your note'
+            : 'Move over a note and click to place the pin'}
           <span>Esc to cancel</span>
         </div>
       )}

@@ -20,12 +20,12 @@ import type {
 } from '../types'
 import { BoardActionError, type BoardConnectionStatus, type BoardGateway } from './BoardGateway'
 
-const STORAGE_KEY_PREFIX = 'poster-boy-board-v5'
+const STORAGE_KEY_PREFIX = 'poster-boy-board-v6'
 const ACTOR_KEY = 'poster-boy-visitor-v1'
 const CHANNEL_NAME = 'poster-boy-board-events'
 
 interface StoredBoard {
-  version: 5
+  version: 6
   notes: BoardNote[]
   pins: BoardPin[]
   budgets: Record<string, ActionBudget>
@@ -139,7 +139,11 @@ export class LocalBoardGateway implements BoardGateway {
       if (!board.notes.some((note) => pinTouchesNote(position, note, this.noteSize))) {
         throw new BoardActionError('Pins need to touch at least one note.')
       }
-      board.pins.push({ id: crypto.randomUUID(), ...position })
+      board.pins.push({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        ...position,
+      })
     })
   }
 
@@ -203,7 +207,7 @@ export class LocalBoardGateway implements BoardGateway {
 
     try {
       const parsed = JSON.parse(stored) as StoredBoard
-      if (parsed.version !== 5 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
+      if (parsed.version !== 6 || !Array.isArray(parsed.notes) || !Array.isArray(parsed.pins)) {
         throw new Error('Invalid board')
       }
       return parsed
@@ -215,7 +219,7 @@ export class LocalBoardGateway implements BoardGateway {
   private createFreshBoard(): StoredBoard {
     const notes = createSeedNotes(this.settings.randomTilt, this.noteSize)
     return {
-      version: 5,
+      version: 6,
       notes,
       pins: createSeedPins(notes, this.noteSize),
       budgets: {},

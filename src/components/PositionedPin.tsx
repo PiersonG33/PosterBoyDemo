@@ -5,15 +5,17 @@ import { useHoldAction } from './useHoldAction'
 
 interface PositionedPinProps {
   pin: BoardPin
+  stackIndex: number
   disabled: boolean
   onRemove: () => void
 }
 
-export function PositionedPin({ pin, disabled, onRemove }: PositionedPinProps) {
+export function PositionedPin({ pin, stackIndex, disabled, onRemove }: PositionedPinProps) {
   const hold = useHoldAction({ disabled, duration: PIN_REMOVAL_HOLD_MS, onComplete: onRemove })
   const style = {
     left: `${pin.x * 100}%`,
     top: `${pin.y * 100}%`,
+    zIndex: stackIndex + 1,
     '--hold-duration': `${PIN_REMOVAL_HOLD_MS}ms`,
   } as CSSProperties
 

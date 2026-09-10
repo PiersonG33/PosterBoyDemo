@@ -5,6 +5,12 @@ import {
 } from '../constants'
 import type { BoardNote, BoardPin, PinPosition } from '../types'
 
+interface NoteGeometry {
+  boardX: number
+  boardY: number
+  rotation: number
+}
+
 export function isPinPositionAvailable(pins: BoardPin[], position: PinPosition) {
   if (
     !Number.isFinite(position.x) || !Number.isFinite(position.y)
@@ -21,9 +27,7 @@ export function isPinPositionAvailable(pins: BoardPin[], position: PinPosition) 
   })
 }
 
-export function pinTouchesNote(pin: PinPosition, note: BoardNote, noteSize: number) {
-  if (note.removedAt !== null) return false
-
+export function pointTouchesNote(pin: PinPosition, note: NoteGeometry, noteSize: number) {
   const centerX = note.boardX + noteSize / BOARD_WIDTH / 2
   const centerY = note.boardY + noteSize / BOARD_HEIGHT / 2
   const deltaX = (pin.x - centerX) * BOARD_WIDTH
@@ -35,6 +39,15 @@ export function pinTouchesNote(pin: PinPosition, note: BoardNote, noteSize: numb
   return Math.abs(localX) <= noteSize / 2 && Math.abs(localY) <= noteSize / 2
 }
 
+export function pinTouchesNote(pin: PinPosition, note: BoardNote, noteSize: number) {
+  return note.removedAt === null && pointTouchesNote(pin, note, noteSize)
+}
+
+export function pinPiercesNote(pin: BoardPin, note: BoardNote, noteSize: number) {
+  return Date.parse(pin.createdAt) >= Date.parse(note.createdAt)
+    && pinTouchesNote(pin, note, noteSize)
+}
+
 export function noteHasPins(note: BoardNote, pins: BoardPin[], noteSize: number) {
-  return pins.some((pin) => pinTouchesNote(pin, note, noteSize))
+  return pins.some((pin) => pinPiercesNote(pin, note, noteSize))
 }

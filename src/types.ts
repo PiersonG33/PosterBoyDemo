@@ -7,6 +7,7 @@ export interface PinPosition {
 
 export interface BoardPin extends PinPosition {
   id: string
+  createdAt: string
 }
 
 export type DrawingPoint = readonly [number, number]
