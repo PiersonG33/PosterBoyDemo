@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { REMOVED_NOTE_RETENTION_MS } from '../constants'
 import type { DemoSettings } from '../demoSettings'
 import type { BoardSnapshot, DrawingData, NotePlacement, PinPosition } from '../types'
 import type { BoardConnectionStatus, BoardGateway } from './BoardGateway'
 import { createBoardGateway } from './createBoardGateway'
+import { applyOptimisticRemovals } from './optimisticRemovals'
 
 type Mutation = () => Promise<BoardSnapshot>
 
@@ -16,12 +17,21 @@ export function useBoard(settings: DemoSettings) {
   const [connectionStatus, setConnectionStatus] = useState<BoardConnectionStatus>(
     gateway.mode === 'local' ? 'local' : 'connecting',
   )
+  const optimisticNoteRemovals = useRef(new Map<string, string>())
+  const optimisticPinRemovals = useRef(new Set<string>())
+  const acceptSnapshot = useCallback((next: BoardSnapshot) => {
+    setSnapshot(applyOptimisticRemovals(
+      next,
+      optimisticNoteRemovals.current,
+      optimisticPinRemovals.current,
+    ))
+  }, [])
 
   useEffect(() => {
     let current = true
     void gateway.load()
       .then((initial) => {
-        if (current) setSnapshot(initial)
+        if (current) acceptSnapshot(initial)
       })
       .catch((error) => {
         if (!current) return
@@ -29,7 +39,7 @@ export function useBoard(settings: DemoSettings) {
         setMessage(error instanceof Error ? error.message : 'The shared board is unavailable.')
       })
     const unsubscribe = gateway.subscribe((next) => {
-      if (current) setSnapshot(next)
+      if (current) acceptSnapshot(next)
     }, (status) => {
       if (current) setConnectionStatus(status)
     })
@@ -37,14 +47,14 @@ export function useBoard(settings: DemoSettings) {
       current = false
       unsubscribe()
     }
-  }, [gateway])
+  }, [acceptSnapshot, gateway])
 
   useEffect(() => {
     if (!snapshot) return
     const milliseconds = Date.parse(snapshot.budget.windowEndsAt) - Date.now() + 250
     if (milliseconds <= 0) {
       void gateway.load()
-        .then(setSnapshot)
+        .then(acceptSnapshot)
         .catch((error) => {
           setConnectionStatus('offline')
           setMessage(error instanceof Error ? error.message : 'The shared board is unavailable.')
@@ -53,14 +63,14 @@ export function useBoard(settings: DemoSettings) {
     }
     const timeout = window.setTimeout(() => {
       void gateway.load()
-        .then(setSnapshot)
+        .then(acceptSnapshot)
         .catch((error) => {
           setConnectionStatus('offline')
           setMessage(error instanceof Error ? error.message : 'The shared board is unavailable.')
         })
     }, milliseconds)
     return () => window.clearTimeout(timeout)
-  }, [gateway, snapshot])
+  }, [acceptSnapshot, gateway, snapshot])
 
   useEffect(() => {
     if (!snapshot?.notes.some((note) => note.removedAt !== null)) return
@@ -78,7 +88,7 @@ export function useBoard(settings: DemoSettings) {
     else setIsPosting(true)
 
     try {
-      setSnapshot(await mutation())
+      acceptSnapshot(await mutation())
       return true
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Something went wrong. Try again.')
@@ -87,7 +97,52 @@ export function useBoard(settings: DemoSettings) {
       setPendingNoteId(null)
       setIsPosting(false)
     }
-  }, [])
+  }, [acceptSnapshot])
+
+  const runOptimisticRemoval = useCallback(async (
+    kind: 'note' | 'pin',
+    id: string,
+    mutation: Mutation,
+  ) => {
+    setMessage(null)
+    if (kind === 'note') {
+      setPendingNoteId(id)
+      optimisticNoteRemovals.current.set(id, new Date().toISOString())
+    } else {
+      setIsPosting(true)
+      optimisticPinRemovals.current.add(id)
+    }
+
+    setSnapshot((current) => current
+      ? applyOptimisticRemovals(
+        current,
+        optimisticNoteRemovals.current,
+        optimisticPinRemovals.current,
+      )
+      : current)
+
+    try {
+      const next = await mutation()
+      if (kind === 'note') optimisticNoteRemovals.current.delete(id)
+      else optimisticPinRemovals.current.delete(id)
+      acceptSnapshot(next)
+      return true
+    } catch (error) {
+      if (kind === 'note') optimisticNoteRemovals.current.delete(id)
+      else optimisticPinRemovals.current.delete(id)
+      setMessage(error instanceof Error ? error.message : 'Something went wrong. Try again.')
+
+      try {
+        acceptSnapshot(await gateway.load())
+      } catch {
+        // Keep the optimistic result until Realtime reconnects when the server outcome is unknown.
+      }
+      return false
+    } finally {
+      setPendingNoteId(null)
+      setIsPosting(false)
+    }
+  }, [acceptSnapshot, gateway])
 
   return {
     snapshot,
@@ -103,7 +158,15 @@ export function useBoard(settings: DemoSettings) {
     createDrawing: (drawing: DrawingData, placement: NotePlacement) =>
       runMutation(() => gateway.createDrawing(drawing, placement)),
     addPin: (position: PinPosition) => runMutation(() => gateway.addPin(position)),
-    removePin: (pinId: string) => runMutation(() => gateway.removePin(pinId)),
-    removeNote: (noteId: string) => runMutation(() => gateway.removeNote(noteId), noteId),
+    removePin: (pinId: string) => runOptimisticRemoval(
+      'pin',
+      pinId,
+      () => gateway.removePin(pinId),
+    ),
+    removeNote: (noteId: string) => runOptimisticRemoval(
+      'note',
+      noteId,
+      () => gateway.removeNote(noteId),
+    ),
   }
 }
