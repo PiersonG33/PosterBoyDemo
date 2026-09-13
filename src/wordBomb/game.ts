@@ -77,12 +77,23 @@ export function getExampleWords(
     .slice(0, Math.max(0, limit))
 }
 
-export function getTurnDurationSeconds(completedTurns: number): number {
-  return Math.max(3.5, 12 - completedTurns * 0.42)
+export const DEFAULT_STARTING_SECONDS = 18
+export const DEFAULT_SPEED_UP_SECONDS = 0.5
+
+export function getTurnDurationSeconds(
+  completedTurns: number,
+  startingSeconds = DEFAULT_STARTING_SECONDS,
+  speedUpSeconds = DEFAULT_SPEED_UP_SECONDS,
+): number {
+  return Math.max(3.5, startingSeconds - completedTurns * speedUpSeconds)
 }
 
-export function isSkullBomb(completedTurns: number): boolean {
-  return completedTurns >= 17 || getTurnDurationSeconds(completedTurns) <= 5
+export function isSkullBomb(
+  completedTurns: number,
+  startingSeconds = DEFAULT_STARTING_SECONDS,
+  speedUpSeconds = DEFAULT_SPEED_UP_SECONDS,
+): boolean {
+  return getTurnDurationSeconds(completedTurns, startingSeconds, speedUpSeconds) <= 5
 }
 
 export function choosePrompt(

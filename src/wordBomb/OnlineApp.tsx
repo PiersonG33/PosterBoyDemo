@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { BombTimer } from './BombTimer'
+import { AttemptFeed } from './AttemptFeed'
 import { DEFAULT_WORDS } from './defaultWords'
-import { buildPromptOptions, getTurnDurationSeconds, isSkullBomb, normalizeWords } from './game'
+import {
+  buildPromptOptions,
+  DEFAULT_SPEED_UP_SECONDS,
+  DEFAULT_STARTING_SECONDS,
+  getTurnDurationSeconds,
+  isSkullBomb,
+  normalizeWords,
+} from './game'
 import {
   type OnlineConnectionStatus,
   type OnlineLobby,
@@ -23,40 +31,27 @@ function updateLobbyUrl(code?: string) {
   window.history.replaceState(null, '', url)
 }
 
-function lobbyNotice(lobby: OnlineLobby): { text: string; kind: 'neutral' | 'good' | 'bad' } {
-  const eventPlayer = lobby.players.find((player) => player.id === lobby.lastEvent.playerId)
-  const currentPlayer = lobby.players.find((player) => player.id === lobby.currentPlayerId)
-
-  if (lobby.lastEvent.type === 'word' && eventPlayer && lobby.lastEvent.word) {
-    return { text: `${eventPlayer.name}: ${lobby.lastEvent.word.toUpperCase()} — nice! ${currentPlayer?.name ?? ''} is up.`, kind: 'good' }
-  }
-  if (lobby.lastEvent.type === 'timeout' && eventPlayer) {
-    const isOut = eventPlayer.lives === 0
-    const examples = lobby.lastExamples.length > 0
-      ? ` Could have used ${lobby.lastExamples.map((word) => word.toUpperCase()).join(', ')}.`
-      : ''
-    return { text: `${eventPlayer.name} lost a life${isOut ? ' and is out' : ''}.${examples} ${currentPlayer?.name ?? ''} is up.`, kind: 'bad' }
-  }
-  return { text: `${currentPlayer?.name ?? 'A player'} starts. Find a word!`, kind: 'neutral' }
-}
-
 export default function OnlineWordBombApp({ service, initialCode, onBack }: OnlineWordBombAppProps) {
   const [hostName, setHostName] = useState('')
   const [joinName, setJoinName] = useState('')
   const [joinCode, setJoinCode] = useState(initialCode)
   const [startingLives, setStartingLives] = useState(2)
   const [minimumPromptWords, setMinimumPromptWords] = useState(3)
+  const [startingTurnSeconds, setStartingTurnSeconds] = useState(DEFAULT_STARTING_SECONDS)
+  const [speedUpSeconds, setSpeedUpSeconds] = useState(DEFAULT_SPEED_UP_SECONDS)
   const [wordList, setWordList] = useState(DEFAULT_WORDS)
   const [wordListName, setWordListName] = useState('Built-in English list')
   const [lobby, setLobby] = useState<OnlineLobby | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<OnlineConnectionStatus>('connecting')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const [guess, setGuess] = useState('')
+  const [guessDraft, setGuessDraft] = useState({ revision: -1, value: '' })
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const guessInputRef = useRef<HTMLInputElement>(null)
   const soundEnabledRef = useRef(soundEnabled)
   const audioContextRef = useRef<AudioContext | null>(null)
   const resumeAttemptedRef = useRef(false)
+  const guess = lobby && guessDraft.revision === lobby.revision ? guessDraft.value : ''
 
   const promptOptions = useMemo(
     () => buildPromptOptions(wordList, minimumPromptWords),
@@ -66,6 +61,12 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
   useEffect(() => {
     soundEnabledRef.current = soundEnabled
   }, [soundEnabled])
+
+  useEffect(() => {
+    if (lobby?.status !== 'playing' || lobby.currentPlayerId !== lobby.youPlayerId) return
+    const animationFrame = window.requestAnimationFrame(() => guessInputRef.current?.focus())
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [lobby?.currentPlayerId, lobby?.revision, lobby?.status, lobby?.youPlayerId])
 
   const ensureAudio = useCallback(() => {
     if (!audioContextRef.current) audioContextRef.current = new AudioContext()
@@ -159,6 +160,8 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
       hostName.trim(),
       startingLives,
       minimumPromptWords,
+      startingTurnSeconds,
+      speedUpSeconds,
       wordList,
       promptOptions.map((prompt) => prompt.sequence),
     ))
@@ -241,6 +244,16 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
                 />
                 <small>Each letter sequence must appear in at least this many words.</small>
               </label>
+              <div className="wb-timing-settings">
+                <label>
+                  <span>Starting time</span>
+                  <div><input type="number" min={5} max={60} value={startingTurnSeconds} onChange={(event) => setStartingTurnSeconds(Math.min(60, Math.max(5, Number(event.target.value) || 5)))} /><small>sec</small></div>
+                </label>
+                <label>
+                  <span>Difficulty increase</span>
+                  <div><input type="number" min={0} max={2} step={0.1} value={speedUpSeconds} onChange={(event) => setSpeedUpSeconds(Math.min(2, Math.max(0, Number(event.target.value) || 0)))} /><small>sec / turn</small></div>
+                </label>
+              </div>
               <div className="wb-word-list wb-word-list--online">
                 <div className="wb-word-list__summary">
                   <span>Word list</span>
@@ -317,7 +330,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
           </div>
           {message && <p className="wb-setup-error" role="status">{message}</p>}
           <div className="wb-lobby-actions">
-            <span>{lobby.startingLives} lives · {lobby.minimumPromptWords}+ answers per prompt · {lobby.players.length}/8 players</span>
+            <span>{lobby.startingLives} lives · {lobby.startingTurnSeconds}s start · {lobby.speedUpSeconds}s faster/turn · {lobby.minimumPromptWords}+ answers per prompt · {lobby.players.length}/8 players</span>
             {lobby.isHost ? (
               <button
                 className="wb-start-button"
@@ -342,23 +355,24 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
   const winner = lobby.players.find((player) => player.id === lobby.winnerPlayerId)
   const you = lobby.players.find((player) => player.id === lobby.youPlayerId)
   const isSpectating = you?.isSpectator === true
-  const skullMode = isSkullBomb(lobby.completedTurns)
-  const durationSeconds = getTurnDurationSeconds(lobby.completedTurns)
+  const skullMode = isSkullBomb(lobby.completedTurns, lobby.startingTurnSeconds, lobby.speedUpSeconds)
+  const durationSeconds = getTurnDurationSeconds(lobby.completedTurns, lobby.startingTurnSeconds, lobby.speedUpSeconds)
   const angleStep = 360 / activePlayers.length
   const activeAngle = -90 + activeIndex * angleStep
   const isMyTurn = lobby.currentPlayerId === lobby.youPlayerId
-  const notice = lobbyNotice(lobby)
 
   const submitGuess = (event: FormEvent) => {
     event.preventDefault()
     if (!isMyTurn || !guess.trim() || busy) return
     const submittedWord = guess
-    setGuess('')
+    setGuessDraft({ revision: lobby.revision, value: '' })
     void runLobbyAction(() => service.submitWord(lobby.code, lobby.revision, submittedWord))
+      .then(() => guessInputRef.current?.focus())
   }
 
   const expireTurn = (revision: number) => {
     playTone(true, true)
+    setGuessDraft({ revision: lobby.revision, value: '' })
     void service.expireTurn(lobby.code, revision).then(setLobby).catch(() => setConnectionStatus('offline'))
   }
 
@@ -396,10 +410,11 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
             '--wb-player-y': `${50 + Math.sin(angle) * 39}%`,
           } as CSSProperties
           return (
-            <article className={`wb-player ${player.id === lobby.currentPlayerId ? 'is-active' : ''} ${player.lives === 0 ? 'is-out' : ''}`} style={style} key={player.id}>
+            <article className={`wb-player ${player.id === lobby.currentPlayerId ? 'is-active' : ''} ${player.lives === 0 ? 'is-out' : ''} ${lobby.lastEvent.type === 'timeout' && lobby.lastEvent.playerId === player.id ? 'is-hit' : ''}`} style={style} key={player.id}>
               <span className="wb-player__turn">{player.id === lobby.youPlayerId ? 'YOUR TURN' : 'PLAYING'}</span>
               <strong>{player.name}{player.id === lobby.youPlayerId ? ' · you' : ''}</strong>
               <span className="wb-player__lives">{player.lives > 0 ? '♥'.repeat(player.lives) : 'OUT'}</span>
+              {lobby.lastEvent.type === 'timeout' && lobby.lastEvent.playerId === player.id && <i className="wb-heart-burst" aria-hidden="true">♥</i>}
             </article>
           )
         })}
@@ -427,7 +442,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
         </section>
       ) : (
         <section className="wb-turn-console">
-          <div className={`wb-notice wb-notice--${message ? 'bad' : notice.kind}`} role="status">{message || notice.text}</div>
+          <AttemptFeed events={lobby.events} />
           <form onSubmit={submitGuess}>
             <label htmlFor="wb-online-guess">{
               isSpectating
@@ -437,8 +452,11 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
             <div className="wb-guess-row">
               <input
                 id="wb-online-guess"
+                key={lobby.revision}
+                ref={guessInputRef}
                 value={guess}
-                onChange={(event) => setGuess(event.target.value)}
+                maxLength={40}
+                onChange={(event) => setGuessDraft({ revision: lobby.revision, value: event.target.value })}
                 placeholder={isMyTurn ? `word containing “${lobby.prompt?.toUpperCase()}”` : isSpectating ? 'Watching this game' : 'Not your turn yet'}
                 disabled={!isMyTurn || busy}
                 autoComplete="off"
@@ -448,6 +466,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
               />
               <button type="submit" disabled={!isMyTurn || busy}>Submit <span>↵</span></button>
             </div>
+            {message && <p className="wb-console-error" role="alert">{message}</p>}
           </form>
           {lobby.deadlineMs !== null && (
             <BombTimer

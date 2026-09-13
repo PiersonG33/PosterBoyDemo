@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { DEFAULT_WORDS } from './defaultWords'
 import { BombTimer } from './BombTimer'
+import { AttemptFeed, type AttemptFeedEvent } from './AttemptFeed'
 import OnlineWordBombApp from './OnlineApp'
 import { createWordBombOnlineService } from './online'
 import {
   buildPromptOptions,
   choosePrompt,
+  DEFAULT_SPEED_UP_SECONDS,
+  DEFAULT_STARTING_SECONDS,
   getExampleWords,
   getTurnDurationSeconds,
   isSkullBomb,
@@ -36,10 +39,15 @@ interface GameState {
   completedTurns: number
   turnToken: number
   startingLives: number
+  startingTurnSeconds: number
+  speedUpSeconds: number
   notice: string
   noticeKind: 'neutral' | 'good' | 'bad'
   winnerId: string | null
   lastExamples: string[]
+  events: AttemptFeedEvent[]
+  lastEventType: AttemptFeedEvent['type'] | null
+  lastEventPlayerId: string | null
 }
 
 const ONLINE_SERVICE = createWordBombOnlineService()
@@ -50,6 +58,8 @@ const INITIAL_LOBBY_CODE = typeof window === 'undefined'
 function createGame(
   playerNames: string[],
   lives: number,
+  startingTurnSeconds: number,
+  speedUpSeconds: number,
   words: string[],
   prompts: PromptOption[],
 ): GameState {
@@ -65,10 +75,15 @@ function createGame(
     completedTurns: 0,
     turnToken: 1,
     startingLives: lives,
+    startingTurnSeconds,
+    speedUpSeconds,
     notice: `${playerNames[0]} starts. Find a word!`,
     noticeKind: 'neutral',
     winnerId: null,
     lastExamples: [],
+    events: [],
+    lastEventType: null,
+    lastEventPlayerId: null,
   }
 }
 
@@ -91,6 +106,16 @@ function finishTurn(game: GameState, acceptedWord: string | null): GameState {
       : player
   ))
   const livingPlayers = players.filter((player) => player.lives > 0)
+  const feedEvent: AttemptFeedEvent = {
+    id: game.turnToken,
+    type: acceptedWord ? 'success' : 'timeout',
+    playerName: activePlayer.name,
+    word: acceptedWord,
+    prompt: game.prompt,
+    reason: null,
+    examples: missedExamples,
+  }
+  const events = [...game.events, feedEvent].slice(-30)
 
   if (livingPlayers.length === 1) {
     return {
@@ -100,6 +125,9 @@ function finishTurn(game: GameState, acceptedWord: string | null): GameState {
       notice: `${livingPlayers[0].name} is the last player standing!`,
       noticeKind: 'good',
       lastExamples: missedExamples,
+      events,
+      lastEventType: feedEvent.type,
+      lastEventPlayerId: activePlayer.id,
     }
   }
 
@@ -134,18 +162,24 @@ function finishTurn(game: GameState, acceptedWord: string | null): GameState {
     notice: `${result} ${nextPlayer.name} is up.`,
     noticeKind: acceptedWord ? 'good' : 'bad',
     lastExamples: missedExamples,
+    events,
+    lastEventType: feedEvent.type,
+    lastEventPlayerId: activePlayer.id,
   }
 }
 
 function LocalWordBombApp({ onBack }: { onBack: () => void }) {
   const [playerNames, setPlayerNames] = useState(['Player 1', 'Player 2'])
   const [startingLives, setStartingLives] = useState(2)
+  const [startingTurnSeconds, setStartingTurnSeconds] = useState(DEFAULT_STARTING_SECONDS)
+  const [speedUpSeconds, setSpeedUpSeconds] = useState(DEFAULT_SPEED_UP_SECONDS)
   const [wordList, setWordList] = useState(DEFAULT_WORDS)
   const [wordListName, setWordListName] = useState('Built-in English list')
   const [setupError, setSetupError] = useState('')
   const [game, setGame] = useState<GameState | null>(null)
   const [guess, setGuess] = useState('')
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const guessInputRef = useRef<HTMLInputElement>(null)
   const soundEnabledRef = useRef(soundEnabled)
   const audioContextRef = useRef<AudioContext | null>(null)
 
@@ -230,7 +264,7 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
     if (soundEnabled) ensureAudio()
     setSetupError('')
     setGuess('')
-    setGame(createGame(names, startingLives, wordList, promptOptions))
+    setGame(createGame(names, startingLives, startingTurnSeconds, speedUpSeconds, wordList, promptOptions))
   }
 
   const submitGuess = (event: FormEvent) => {
@@ -241,8 +275,25 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
     const result = validateGuess(guess, game.prompt, game.allowedWords, game.usedWords)
     if (!result.valid) {
       setGame((current) => current && current.turnToken === token
-        ? { ...current, notice: result.reason, noticeKind: 'bad' }
+        ? {
+            ...current,
+            notice: result.reason,
+            noticeKind: 'bad',
+            events: [...current.events, {
+              id: `${token}-invalid-${crypto.randomUUID()}`,
+              type: 'invalid' as const,
+              playerName: current.players[current.activeIndex].name,
+              word: guess.trim().toLowerCase(),
+              prompt: current.prompt,
+              reason: result.reason,
+              examples: [],
+            }].slice(-30),
+            lastEventType: 'invalid',
+            lastEventPlayerId: current.players[current.activeIndex].id,
+          }
         : current)
+      setGuess('')
+      window.requestAnimationFrame(() => guessInputRef.current?.focus())
       return
     }
 
@@ -322,6 +373,17 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
                 </div>
               </label>
 
+              <div className="wb-timing-settings">
+                <label>
+                  <span>Starting time</span>
+                  <div><input type="number" min={5} max={60} value={startingTurnSeconds} onChange={(event) => setStartingTurnSeconds(Math.min(60, Math.max(5, Number(event.target.value) || 5)))} /><small>sec</small></div>
+                </label>
+                <label>
+                  <span>Difficulty increase</span>
+                  <div><input type="number" min={0} max={2} step={0.1} value={speedUpSeconds} onChange={(event) => setSpeedUpSeconds(Math.min(2, Math.max(0, Number(event.target.value) || 0)))} /><small>sec / turn</small></div>
+                </label>
+              </div>
+
               <div className="wb-word-list">
                 <div className="wb-word-list__summary">
                   <span>Word list</span>
@@ -367,8 +429,8 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
 
   const activePlayer = game.players[game.activeIndex]
   const winner = game.players.find((player) => player.id === game.winnerId)
-  const skullMode = isSkullBomb(game.completedTurns)
-  const durationSeconds = getTurnDurationSeconds(game.completedTurns)
+  const skullMode = isSkullBomb(game.completedTurns, game.startingTurnSeconds, game.speedUpSeconds)
+  const durationSeconds = getTurnDurationSeconds(game.completedTurns, game.startingTurnSeconds, game.speedUpSeconds)
   const angleStep = 360 / game.players.length
   const activeAngle = -90 + game.activeIndex * angleStep
 
@@ -398,7 +460,7 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
           } as CSSProperties
           return (
             <article
-              className={`wb-player ${index === game.activeIndex && !game.winnerId ? 'is-active' : ''} ${player.lives === 0 ? 'is-out' : ''}`}
+              className={`wb-player ${index === game.activeIndex && !game.winnerId ? 'is-active' : ''} ${player.lives === 0 ? 'is-out' : ''} ${game.lastEventType === 'timeout' && game.lastEventPlayerId === player.id ? 'is-hit' : ''}`}
               style={style}
               key={player.id}
             >
@@ -407,6 +469,7 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
               <span className="wb-player__lives" aria-label={`${player.lives} lives remaining`}>
                 {player.lives > 0 ? '♥'.repeat(player.lives) : 'OUT'}
               </span>
+              {game.lastEventType === 'timeout' && game.lastEventPlayerId === player.id && <i className="wb-heart-burst" aria-hidden="true">♥</i>}
             </article>
           )
         })}
@@ -423,14 +486,16 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
 
       {!winner ? (
         <section className="wb-turn-console">
-          <div className={`wb-notice wb-notice--${game.noticeKind}`} role="status">{game.notice}</div>
+          <AttemptFeed events={game.events} />
           <form onSubmit={submitGuess}>
             <label htmlFor="wb-guess">{activePlayer.name}, type your word</label>
             <div className="wb-guess-row">
               <input
                 id="wb-guess"
                 key={game.turnToken}
+                ref={guessInputRef}
                 value={guess}
+                maxLength={40}
                 onChange={(event) => setGuess(event.target.value)}
                 placeholder={`word containing “${game.prompt.toUpperCase()}”`}
                 autoComplete="off"
@@ -461,11 +526,20 @@ function LocalWordBombApp({ onBack }: { onBack: () => void }) {
           <div>
             <button type="button" onClick={() => {
               setGuess('')
-              setGame(createGame(game.players.map((player) => player.name), game.startingLives, [...game.allowedWords], game.promptOptions))
+              setGame(createGame(
+                game.players.map((player) => player.name),
+                game.startingLives,
+                game.startingTurnSeconds,
+                game.speedUpSeconds,
+                [...game.allowedWords],
+                game.promptOptions,
+              ))
             }}>Play again</button>
             <button type="button" onClick={() => {
               setPlayerNames(game.players.map((player) => player.name))
               setStartingLives(game.startingLives)
+              setStartingTurnSeconds(game.startingTurnSeconds)
+              setSpeedUpSeconds(game.speedUpSeconds)
               setGame(null)
             }}>Change setup</button>
           </div>

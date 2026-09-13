@@ -2,6 +2,7 @@
 
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient, getSupabaseRuntimeConfig } from '../lib/supabase'
+import type { AttemptFeedEvent } from './AttemptFeed'
 
 export type OnlineLobbyStatus = 'waiting' | 'playing' | 'finished'
 export type OnlineConnectionStatus = 'connecting' | 'live' | 'offline'
@@ -26,6 +27,8 @@ export interface OnlineLobby {
   status: OnlineLobbyStatus
   startingLives: number
   minimumPromptWords: number
+  startingTurnSeconds: number
+  speedUpSeconds: number
   currentPlayerId: string | null
   prompt: string | null
   deadlineMs: number | null
@@ -38,6 +41,7 @@ export interface OnlineLobby {
   youPlayerId: string
   lastEvent: OnlineLobbyEvent
   lastExamples: string[]
+  events: AttemptFeedEvent[]
   players: OnlinePlayer[]
 }
 
@@ -100,12 +104,35 @@ export function mapOnlineLobby(value: unknown, receivedAt = Date.now()): OnlineL
 
   const usedWordsValue = value.usedWords
   const lastExamplesValue = value.lastExamples
+  const eventsValue = value.events
   if (!Array.isArray(usedWordsValue) || usedWordsValue.some((word) => typeof word !== 'string')) {
     throw new Error('The lobby returned invalid used words.')
   }
   if (!Array.isArray(lastExamplesValue) || lastExamplesValue.some((word) => typeof word !== 'string')) {
     throw new Error('The lobby returned invalid examples.')
   }
+  if (!Array.isArray(eventsValue)) {
+    throw new Error('The lobby returned invalid events.')
+  }
+
+  const events = eventsValue.map((event): AttemptFeedEvent => {
+    if (!isRecord(event) || !['success', 'invalid', 'timeout'].includes(String(event.type))) {
+      throw new Error('The lobby returned an invalid event.')
+    }
+    const examples = event.examples
+    if (!Array.isArray(examples) || examples.some((word) => typeof word !== 'string')) {
+      throw new Error('The lobby returned invalid event examples.')
+    }
+    return {
+      id: readNumber(event, 'id'),
+      type: event.type as AttemptFeedEvent['type'],
+      playerName: readString(event, 'playerName')!,
+      word: readString(event, 'word', true),
+      prompt: readString(event, 'prompt')!,
+      reason: readString(event, 'reason', true),
+      examples: examples as string[],
+    }
+  })
 
   return {
     id: readString(value, 'id')!,
@@ -113,6 +140,8 @@ export function mapOnlineLobby(value: unknown, receivedAt = Date.now()): OnlineL
     status: status as OnlineLobbyStatus,
     startingLives: readNumber(value, 'startingLives'),
     minimumPromptWords: readNumber(value, 'minimumPromptWords'),
+    startingTurnSeconds: readNumber(value, 'startingTurnSeconds'),
+    speedUpSeconds: readNumber(value, 'speedUpSeconds'),
     currentPlayerId: readString(value, 'currentPlayerId', true),
     prompt: readString(value, 'prompt', true),
     deadlineMs,
@@ -129,6 +158,7 @@ export function mapOnlineLobby(value: unknown, receivedAt = Date.now()): OnlineL
       word: readString(eventValue, 'word', true),
     },
     lastExamples: lastExamplesValue as string[],
+    events,
     players,
   }
 }
@@ -152,6 +182,8 @@ export class WordBombOnlineService {
     name: string,
     lives: number,
     minimumPromptWords: number,
+    startingTurnSeconds: number,
+    speedUpSeconds: number,
     words: string[],
     prompts: string[],
   ): Promise<OnlineLobby> {
@@ -160,6 +192,8 @@ export class WordBombOnlineService {
       p_name: name,
       p_lives: lives,
       p_min_prompt_words: minimumPromptWords,
+      p_starting_seconds: startingTurnSeconds,
+      p_speed_up_seconds: speedUpSeconds,
       p_words: words,
       p_prompts: prompts,
     })
@@ -235,6 +269,11 @@ export class WordBombOnlineService {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'word_bomb_players', filter: `lobby_id=eq.${lobby.id}` },
+        refresh,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'word_bomb_events', filter: `lobby_id=eq.${lobby.id}` },
         refresh,
       )
       .subscribe((status) => {

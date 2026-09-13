@@ -54,7 +54,8 @@ describe('Custom Word Bomb rules', () => {
   })
 
   it('speeds up without becoming impossibly short', () => {
-    expect(getTurnDurationSeconds(0)).toBe(12)
+    expect(getTurnDurationSeconds(0)).toBe(18)
     expect(getTurnDurationSeconds(100)).toBe(3.5)
+    expect(getTurnDurationSeconds(4, 25, 1.5)).toBe(19)
   })
 })
