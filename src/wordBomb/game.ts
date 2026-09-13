@@ -18,7 +18,10 @@ export function normalizeWords(source: string): string[] {
   return [...new Set(matches.filter((word) => word.length >= 3))]
 }
 
-export function buildPromptOptions(words: readonly string[]): PromptOption[] {
+export function buildPromptOptions(
+  words: readonly string[],
+  minimumMatches = MIN_WORDS_PER_PROMPT,
+): PromptOption[] {
   const matchesBySequence = new Map<string, Set<string>>()
 
   for (const word of words) {
@@ -33,7 +36,7 @@ export function buildPromptOptions(words: readonly string[]): PromptOption[] {
   }
 
   return [...matchesBySequence.entries()]
-    .filter(([, matches]) => matches.size >= MIN_WORDS_PER_PROMPT)
+    .filter(([, matches]) => matches.size >= Math.max(1, minimumMatches))
     .map(([sequence, matches]) => ({ sequence, matchingWords: matches.size }))
     .sort((left, right) => left.sequence.localeCompare(right.sequence))
 }

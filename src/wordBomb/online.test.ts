@@ -11,6 +11,7 @@ describe('online Word Bomb lobby mapping', () => {
       code: 'ABC234',
       status: 'playing',
       startingLives: 2,
+      minimumPromptWords: 3,
       currentPlayerId: 'player-1',
       prompt: 'ca',
       deadlineAt: '2026-09-12T20:00:08Z',
@@ -25,8 +26,8 @@ describe('online Word Bomb lobby mapping', () => {
       lastEvent: { type: 'started', playerId: 'player-1', word: null },
       lastExamples: [],
       players: [
-        { id: 'player-1', name: 'Ash', seat: 1, lives: 2 },
-        { id: 'player-2', name: 'Misty', seat: 2, lives: 2 },
+        { id: 'player-1', name: 'Ash', seat: 1, lives: 2, isSpectator: false },
+        { id: 'player-2', name: 'Misty', seat: 2, lives: 2, isSpectator: false },
       ],
     }, receivedAt)
 

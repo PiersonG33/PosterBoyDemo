@@ -20,6 +20,13 @@ describe('Custom Word Bomb rules', () => {
     expect(prompts.every((prompt) => prompt.matchingWords >= MIN_WORDS_PER_PROMPT)).toBe(true)
   })
 
+  it('supports a host-selected prompt match threshold', () => {
+    const words = normalizeWords('camera camel camp candle cape dog')
+
+    expect(buildPromptOptions(words, 5).find((prompt) => prompt.sequence === 'ca')?.matchingWords).toBe(5)
+    expect(buildPromptOptions(words, 6).some((prompt) => prompt.sequence === 'ca')).toBe(false)
+  })
+
   it('requires an allowed, unused word containing the prompt', () => {
     const allowed = new Set(['camera', 'camel', 'camp'])
 

@@ -11,6 +11,7 @@ export interface OnlinePlayer {
   name: string
   seat: number
   lives: number
+  isSpectator: boolean
 }
 
 export interface OnlineLobbyEvent {
@@ -24,6 +25,7 @@ export interface OnlineLobby {
   code: string
   status: OnlineLobbyStatus
   startingLives: number
+  minimumPromptWords: number
   currentPlayerId: string | null
   prompt: string | null
   deadlineMs: number | null
@@ -82,6 +84,7 @@ export function mapOnlineLobby(value: unknown, receivedAt = Date.now()): OnlineL
       name: readString(playerValue, 'name')!,
       seat: readNumber(playerValue, 'seat'),
       lives: readNumber(playerValue, 'lives'),
+      isSpectator: playerValue.isSpectator === true,
     }
   })
 
@@ -109,6 +112,7 @@ export function mapOnlineLobby(value: unknown, receivedAt = Date.now()): OnlineL
     code: readString(value, 'code')!,
     status: status as OnlineLobbyStatus,
     startingLives: readNumber(value, 'startingLives'),
+    minimumPromptWords: readNumber(value, 'minimumPromptWords'),
     currentPlayerId: readString(value, 'currentPlayerId', true),
     prompt: readString(value, 'prompt', true),
     deadlineMs,
@@ -144,11 +148,18 @@ export class WordBombOnlineService {
     this.client = client
   }
 
-  async createLobby(name: string, lives: number, words: string[], prompts: string[]): Promise<OnlineLobby> {
+  async createLobby(
+    name: string,
+    lives: number,
+    minimumPromptWords: number,
+    words: string[],
+    prompts: string[],
+  ): Promise<OnlineLobby> {
     await this.ensureReady()
     return this.call('word_bomb_create_lobby', {
       p_name: name,
       p_lives: lives,
+      p_min_prompt_words: minimumPromptWords,
       p_words: words,
       p_prompts: prompts,
     })

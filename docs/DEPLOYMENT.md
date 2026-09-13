@@ -83,7 +83,7 @@ Open the deployed link in two independent browser contexts—two laptops is best
 <!-- CUSTOM WORD BOMB — BEGIN: remove this section with the isolated game. -->
 ## Enable and verify Word Bomb multiplayer
 
-Online lobbies require `supabase/migrations/20260912000000_word_bomb_online_multiplayer.sql` to be applied to the same Supabase project. If the initial project setup was completed before that migration was added, run:
+Online lobbies require all committed `20260912*_word_bomb_*.sql` migrations to be applied to the same Supabase project. If the initial project setup was completed before those migrations were added, run:
 
 ```bash
 npx supabase db push --dry-run

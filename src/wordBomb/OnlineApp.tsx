@@ -45,6 +45,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
   const [joinName, setJoinName] = useState('')
   const [joinCode, setJoinCode] = useState(initialCode)
   const [startingLives, setStartingLives] = useState(2)
+  const [minimumPromptWords, setMinimumPromptWords] = useState(3)
   const [wordList, setWordList] = useState(DEFAULT_WORDS)
   const [wordListName, setWordListName] = useState('Built-in English list')
   const [lobby, setLobby] = useState<OnlineLobby | null>(null)
@@ -57,7 +58,10 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
   const audioContextRef = useRef<AudioContext | null>(null)
   const resumeAttemptedRef = useRef(false)
 
-  const promptOptions = useMemo(() => buildPromptOptions(wordList), [wordList])
+  const promptOptions = useMemo(
+    () => buildPromptOptions(wordList, minimumPromptWords),
+    [minimumPromptWords, wordList],
+  )
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled
@@ -126,13 +130,13 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
       return
     }
     const words = normalizeWords(await file.text())
-    const prompts = buildPromptOptions(words)
+    const prompts = buildPromptOptions(words, minimumPromptWords)
     if (words.length > 10_000) {
       setMessage('Online word lists are limited to 10,000 unique words.')
       return
     }
     if (prompts.length === 0) {
-      setMessage('That file has no 2–3 letter sequence shared by at least three words.')
+      setMessage(`That file has no 2–3 letter sequence shared by at least ${minimumPromptWords} words.`)
       return
     }
     setWordList(words)
@@ -146,10 +150,15 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
       setMessage('Enter your name before creating a lobby.')
       return
     }
+    if (promptOptions.length === 0) {
+      setMessage(`No prompt in this word list appears in at least ${minimumPromptWords} words.`)
+      return
+    }
     ensureAudio()
     void runLobbyAction(() => service.createLobby(
       hostName.trim(),
       startingLives,
+      minimumPromptWords,
       wordList,
       promptOptions.map((prompt) => prompt.sequence),
     ))
@@ -172,7 +181,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
     onBack()
   }
 
-  const leaveWaitingLobby = async () => {
+  const leaveLobby = async () => {
     if (!lobby) return
     setBusy(true)
     try {
@@ -221,11 +230,22 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
                   ))}
                 </div>
               </label>
+              <label className="wb-minimum-setting">
+                <span>Required answers per prompt</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={minimumPromptWords}
+                  onChange={(event) => setMinimumPromptWords(Math.min(20, Math.max(1, Number(event.target.value) || 1)))}
+                />
+                <small>Each letter sequence must appear in at least this many words.</small>
+              </label>
               <div className="wb-word-list wb-word-list--online">
                 <div className="wb-word-list__summary">
                   <span>Word list</span>
                   <strong>{wordListName}</strong>
-                  <small>{wordList.length.toLocaleString()} words · {promptOptions.length.toLocaleString()} safe prompts</small>
+                  <small>{wordList.length.toLocaleString()} words · {promptOptions.length.toLocaleString()} prompts with {minimumPromptWords}+ answers</small>
                 </div>
                 <label className="wb-upload">
                   <input type="file" accept=".txt,.csv,text/plain,text/csv" onChange={(event) => void handleWordListUpload(event.target.files?.[0])} />
@@ -258,7 +278,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
                   autoCapitalize="characters"
                 />
               </label>
-              <p className="wb-online-help">Ask the host for the code shown in their waiting room. Games support 2–8 players.</p>
+              <p className="wb-online-help">Ask the host for the code shown in their waiting room. If a game is already active, you can spectate and join the next one.</p>
               <button className="wb-online-primary wb-online-primary--light" type="submit" disabled={busy}>Join lobby <span>→</span></button>
             </form>
           </div>
@@ -273,9 +293,9 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
       <main className="wb-shell wb-lobby-shell">
         <div className="wb-grain" aria-hidden="true" />
         <header className="wb-game-header">
-          <button className="wb-logo" type="button" onClick={() => void leaveWaitingLobby()}><span>WORD</span> BOMB</button>
+          <button className="wb-logo" type="button" onClick={() => void leaveLobby()}><span>WORD</span> BOMB</button>
           <span className={`wb-live-status wb-live-status--${connectionStatus}`}><i />{connectionStatus}</span>
-          <button className="wb-leave-button" type="button" disabled={busy} onClick={() => void leaveWaitingLobby()}>Leave lobby</button>
+          <button className="wb-leave-button" type="button" disabled={busy} onClick={() => void leaveLobby()}>Leave lobby</button>
         </header>
         <section className="wb-lobby-card">
           <span className="wb-lobby-eyebrow">Waiting room</span>
@@ -297,7 +317,7 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
           </div>
           {message && <p className="wb-setup-error" role="status">{message}</p>}
           <div className="wb-lobby-actions">
-            <span>{lobby.startingLives} lives · {lobby.players.length}/8 players</span>
+            <span>{lobby.startingLives} lives · {lobby.minimumPromptWords}+ answers per prompt · {lobby.players.length}/8 players</span>
             {lobby.isHost ? (
               <button
                 className="wb-start-button"
@@ -315,12 +335,16 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
     )
   }
 
-  const activeIndex = Math.max(0, lobby.players.findIndex((player) => player.id === lobby.currentPlayerId))
-  const activePlayer = lobby.players[activeIndex]
+  const activePlayers = lobby.players.filter((player) => !player.isSpectator)
+  const spectators = lobby.players.filter((player) => player.isSpectator)
+  const activeIndex = Math.max(0, activePlayers.findIndex((player) => player.id === lobby.currentPlayerId))
+  const activePlayer = activePlayers[activeIndex]
   const winner = lobby.players.find((player) => player.id === lobby.winnerPlayerId)
+  const you = lobby.players.find((player) => player.id === lobby.youPlayerId)
+  const isSpectating = you?.isSpectator === true
   const skullMode = isSkullBomb(lobby.completedTurns)
   const durationSeconds = getTurnDurationSeconds(lobby.completedTurns)
-  const angleStep = 360 / lobby.players.length
+  const angleStep = 360 / activePlayers.length
   const activeAngle = -90 + activeIndex * angleStep
   const isMyTurn = lobby.currentPlayerId === lobby.youPlayerId
   const notice = lobbyNotice(lobby)
@@ -345,7 +369,9 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
         <div className="wb-online-brand"><span className="wb-logo"><span>WORD</span> BOMB</span><small>{lobby.code}</small></div>
         <div className="wb-round">Round <strong>{lobby.round}</strong><span>·</span>{lobby.usedWords.length} word{lobby.usedWords.length === 1 ? '' : 's'} used</div>
         <div className="wb-online-header-actions">
+          {isSpectating && <span className="wb-spectating-badge">Spectating</span>}
           <span className={`wb-live-status wb-live-status--${connectionStatus}`}><i />{connectionStatus}</span>
+          {isSpectating && <button className="wb-leave-button" type="button" onClick={() => void leaveLobby()}>Leave</button>}
           <button className="wb-icon-button" type="button" onClick={() => {
             const next = !soundEnabled
             setSoundEnabled(next)
@@ -356,8 +382,14 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
       </header>
 
       <section className="wb-arena" aria-label="Online game table">
+        {spectators.length > 0 && (
+          <div className="wb-spectator-list">
+            <span>Spectating</span>
+            {spectators.map((player) => player.name).join(' · ')}
+          </div>
+        )}
         <div className="wb-turn-arrow" style={{ transform: `rotate(${activeAngle}deg)` }} aria-hidden="true"><i /></div>
-        {lobby.players.map((player, index) => {
+        {activePlayers.map((player, index) => {
           const angle = (-90 + index * angleStep) * (Math.PI / 180)
           const style = {
             '--wb-player-x': `${50 + Math.cos(angle) * 41}%`,
@@ -397,13 +429,17 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
         <section className="wb-turn-console">
           <div className={`wb-notice wb-notice--${message ? 'bad' : notice.kind}`} role="status">{message || notice.text}</div>
           <form onSubmit={submitGuess}>
-            <label htmlFor="wb-online-guess">{isMyTurn ? `${activePlayer.name}, type your word` : `Waiting for ${activePlayer.name}`}</label>
+            <label htmlFor="wb-online-guess">{
+              isSpectating
+                ? 'Spectating — you will join the next game'
+                : isMyTurn ? `${activePlayer.name}, type your word` : `Waiting for ${activePlayer.name}`
+            }</label>
             <div className="wb-guess-row">
               <input
                 id="wb-online-guess"
                 value={guess}
                 onChange={(event) => setGuess(event.target.value)}
-                placeholder={isMyTurn ? `word containing “${lobby.prompt?.toUpperCase()}”` : 'Not your turn yet'}
+                placeholder={isMyTurn ? `word containing “${lobby.prompt?.toUpperCase()}”` : isSpectating ? 'Watching this game' : 'Not your turn yet'}
                 disabled={!isMyTurn || busy}
                 autoComplete="off"
                 autoCapitalize="none"
