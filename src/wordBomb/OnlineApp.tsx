@@ -63,10 +63,10 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
   }, [soundEnabled])
 
   useEffect(() => {
-    if (lobby?.status !== 'playing' || lobby.currentPlayerId !== lobby.youPlayerId) return
+    if (busy || lobby?.status !== 'playing' || lobby.currentPlayerId !== lobby.youPlayerId) return
     const animationFrame = window.requestAnimationFrame(() => guessInputRef.current?.focus())
     return () => window.cancelAnimationFrame(animationFrame)
-  }, [lobby?.currentPlayerId, lobby?.revision, lobby?.status, lobby?.youPlayerId])
+  }, [busy, lobby?.currentPlayerId, lobby?.revision, lobby?.status, lobby?.youPlayerId])
 
   const ensureAudio = useCallback(() => {
     if (!audioContextRef.current) audioContextRef.current = new AudioContext()
@@ -367,7 +367,6 @@ export default function OnlineWordBombApp({ service, initialCode, onBack }: Onli
     const submittedWord = guess
     setGuessDraft({ revision: lobby.revision, value: '' })
     void runLobbyAction(() => service.submitWord(lobby.code, lobby.revision, submittedWord))
-      .then(() => guessInputRef.current?.focus())
   }
 
   const expireTurn = (revision: number) => {
