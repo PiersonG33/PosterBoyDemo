@@ -80,6 +80,19 @@ Open the deployed link in two independent browser contexts—two laptops is best
 4. Confirm each browser has its own 20-action budget.
 5. Refresh both pages and verify that the board is preserved.
 
+<!-- CUSTOM WORD BOMB — BEGIN: remove this section with the isolated game. -->
+## Enable and verify Word Bomb multiplayer
+
+Online lobbies require `supabase/migrations/20260912000000_word_bomb_online_multiplayer.sql` to be applied to the same Supabase project. If the initial project setup was completed before that migration was added, run:
+
+```bash
+npx supabase db push --dry-run
+npx supabase db push
+```
+
+Then deploy the frontend normally. Open `/CustomWordBomb/` in two independent browser profiles, create a lobby in one, join with the displayed code in the other, and confirm that joining, starting, valid words, timeouts, and lives synchronize. Normal tabs can share one anonymous identity, so they are not a reliable two-player test.
+<!-- CUSTOM WORD BOMB — END -->
+
 If the board loads but changes do not propagate, inspect Supabase **Database → Publications** and confirm `notes` and `pins` belong to `supabase_realtime`. The migration normally does this automatically.
 
 ## Reset the board

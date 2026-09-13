@@ -3,7 +3,7 @@
 <!-- CUSTOM WORD BOMB — BEGIN: remove this section with the isolated game. -->
 ## Custom Word Bomb side project
 
-The same GitHub Pages build also publishes the standalone pass-and-play game at `/CustomWordBomb/`. Its source, removal instructions, and word-list format are documented in [`src/wordBomb/README.md`](src/wordBomb/README.md). It does not use Poster Boy's components, styles, Supabase connection, or board state.
+The same GitHub Pages build also publishes Word Bomb at `/CustomWordBomb/`, with online lobbies and a same-device mode. Its source, multiplayer setup, removal instructions, and word-list format are documented in [`src/wordBomb/README.md`](src/wordBomb/README.md). It does not use Poster Boy's components, styles, or board state; online mode reuses the configured Supabase project through isolated `word_bomb_*` objects.
 <!-- CUSTOM WORD BOMB — END -->
 
 Poster Boy is a shared corkboard where visitors spend a limited supply of actions to create, pin, unpin, and remove sticky notes.

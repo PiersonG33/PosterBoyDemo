@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { DEFAULT_WORDS } from './defaultWords'
+import { BombTimer } from './BombTimer'
+import OnlineWordBombApp from './OnlineApp'
+import { createWordBombOnlineService } from './online'
 import {
   buildPromptOptions,
   choosePrompt,
+  getExampleWords,
   getTurnDurationSeconds,
   isSkullBomb,
   MAX_PLAYERS,
@@ -35,56 +39,13 @@ interface GameState {
   notice: string
   noticeKind: 'neutral' | 'good' | 'bad'
   winnerId: string | null
+  lastExamples: string[]
 }
 
-interface BombTimerProps {
-  durationSeconds: number
-  skullMode: boolean
-  token: number
-  onExpire: (token: number) => void
-  onTick: (urgent: boolean) => void
-}
-
-function BombTimer({ durationSeconds, skullMode, token, onExpire, onTick }: BombTimerProps) {
-  const [remainingMs, setRemainingMs] = useState(durationSeconds * 1_000)
-  const deadlineRef = useRef(0)
-  const expiredRef = useRef(false)
-  const lastSecondRef = useRef(Math.ceil(durationSeconds))
-
-  useEffect(() => {
-    deadlineRef.current = performance.now() + durationSeconds * 1_000
-    expiredRef.current = false
-    lastSecondRef.current = Math.ceil(durationSeconds)
-    const interval = window.setInterval(() => {
-      const nextRemaining = Math.max(0, deadlineRef.current - performance.now())
-      setRemainingMs(nextRemaining)
-
-      const nextSecond = Math.ceil(nextRemaining / 1_000)
-      if (nextSecond < lastSecondRef.current && nextSecond > 0) {
-        lastSecondRef.current = nextSecond
-        onTick(skullMode || nextRemaining < 3_500)
-      }
-
-      if (nextRemaining === 0 && !expiredRef.current) {
-        expiredRef.current = true
-        window.clearInterval(interval)
-        onExpire(token)
-      }
-    }, 50)
-
-    return () => window.clearInterval(interval)
-  }, [durationSeconds, onExpire, onTick, skullMode, token])
-
-  const fraction = Math.max(0, remainingMs / (durationSeconds * 1_000))
-  const timerStyle = { '--wb-time-left': `${fraction * 100}%` } as CSSProperties
-
-  return (
-    <div className="wb-timer" style={timerStyle} aria-label={`${(remainingMs / 1_000).toFixed(1)} seconds left`}>
-      <span>{(remainingMs / 1_000).toFixed(1)}</span>
-      <div className="wb-timer__track" aria-hidden="true"><i /></div>
-    </div>
-  )
-}
+const ONLINE_SERVICE = createWordBombOnlineService()
+const INITIAL_LOBBY_CODE = typeof window === 'undefined'
+  ? ''
+  : new URL(window.location.href).searchParams.get('lobby')?.toUpperCase() ?? ''
 
 function createGame(
   playerNames: string[],
@@ -107,6 +68,7 @@ function createGame(
     notice: `${playerNames[0]} starts. Find a word!`,
     noticeKind: 'neutral',
     winnerId: null,
+    lastExamples: [],
   }
 }
 
@@ -120,6 +82,9 @@ function nextLivingPlayerIndex(players: Player[], currentIndex: number): number 
 
 function finishTurn(game: GameState, acceptedWord: string | null): GameState {
   const activePlayer = game.players[game.activeIndex]
+  const missedExamples = acceptedWord === null
+    ? getExampleWords(game.prompt, game.allowedWords, game.usedWords)
+    : []
   const players = game.players.map((player, index) => (
     acceptedWord === null && index === game.activeIndex
       ? { ...player, lives: Math.max(0, player.lives - 1) }
@@ -134,6 +99,7 @@ function finishTurn(game: GameState, acceptedWord: string | null): GameState {
       winnerId: livingPlayers[0].id,
       notice: `${livingPlayers[0].name} is the last player standing!`,
       noticeKind: 'good',
+      lastExamples: missedExamples,
     }
   }
 
@@ -149,7 +115,11 @@ function finishTurn(game: GameState, acceptedWord: string | null): GameState {
   const lostLastLife = acceptedWord === null && players[game.activeIndex].lives === 0
   const result = acceptedWord
     ? `${activePlayer.name}: ${acceptedWord.toUpperCase()} — nice!`
-    : `${activePlayer.name} lost a life${lostLastLife ? ' and is out' : ''}.`
+    : `${activePlayer.name} lost a life${lostLastLife ? ' and is out' : ''}.${
+      missedExamples.length > 0
+        ? ` You could have used ${missedExamples.map((word) => word.toUpperCase()).join(', ')}.`
+        : ''
+    }`
 
   return {
     ...game,
@@ -163,10 +133,11 @@ function finishTurn(game: GameState, acceptedWord: string | null): GameState {
     turnToken: game.turnToken + 1,
     notice: `${result} ${nextPlayer.name} is up.`,
     noticeKind: acceptedWord ? 'good' : 'bad',
+    lastExamples: missedExamples,
   }
 }
 
-export default function WordBombApp() {
+function LocalWordBombApp({ onBack }: { onBack: () => void }) {
   const [playerNames, setPlayerNames] = useState(['Player 1', 'Player 2'])
   const [startingLives, setStartingLives] = useState(2)
   const [wordList, setWordList] = useState(DEFAULT_WORDS)
@@ -383,7 +354,7 @@ export default function WordBombApp() {
 
           {setupError && <p className="wb-setup-error" role="alert">{setupError}</p>}
           <div className="wb-setup-actions">
-            <a href="../">← Poster Boy</a>
+            <button className="wb-back-link" type="button" onClick={onBack}>← Game modes</button>
             <button className="wb-sound-button" type="button" onClick={toggleSound} aria-pressed={soundEnabled}>
               {soundEnabled ? 'Sound on' : 'Sound off'}
             </button>
@@ -484,6 +455,9 @@ export default function WordBombApp() {
           <span>WINNER</span>
           <h2 id="wb-winner-title">{winner.name}</h2>
           <p>Survived {game.round} round{game.round === 1 ? '' : 's'} and {game.completedTurns} turns.</p>
+          {game.lastExamples.length > 0 && (
+            <p className="wb-winner__examples">Missed answers: {game.lastExamples.map((word) => word.toUpperCase()).join(' · ')}</p>
+          )}
           <div>
             <button type="button" onClick={() => {
               setGuess('')
@@ -497,6 +471,52 @@ export default function WordBombApp() {
           </div>
         </section>
       )}
+    </main>
+  )
+}
+
+export default function WordBombApp() {
+  const [mode, setMode] = useState<'menu' | 'online' | 'local'>(() => (
+    INITIAL_LOBBY_CODE && ONLINE_SERVICE ? 'online' : 'menu'
+  ))
+
+  if (mode === 'online' && ONLINE_SERVICE) {
+    return (
+      <OnlineWordBombApp
+        service={ONLINE_SERVICE}
+        initialCode={INITIAL_LOBBY_CODE}
+        onBack={() => setMode('menu')}
+      />
+    )
+  }
+
+  if (mode === 'local') {
+    return <LocalWordBombApp onBack={() => setMode('menu')} />
+  }
+
+  return (
+    <main className="wb-shell wb-setup-shell">
+      <div className="wb-grain" aria-hidden="true" />
+      <section className="wb-setup-card wb-mode-card">
+        <div className="wb-kicker">Choose how to play</div>
+        <h1><span>WORD</span> BOMB</h1>
+        <p className="wb-intro">Race the fuse together online, or gather around one keyboard.</p>
+        <div className="wb-mode-options">
+          <button type="button" disabled={!ONLINE_SERVICE} onClick={() => setMode('online')}>
+            <span>ONLINE</span>
+            <strong>Host or join</strong>
+            <small>{ONLINE_SERVICE ? 'Private lobby · 2–8 players' : 'Supabase configuration required'}</small>
+            <i>→</i>
+          </button>
+          <button type="button" onClick={() => setMode('local')}>
+            <span>ONE DEVICE</span>
+            <strong>Pass and play</strong>
+            <small>No lobby or connection needed</small>
+            <i>→</i>
+          </button>
+        </div>
+        <a className="wb-poster-boy-link" href="../">← Poster Boy</a>
+      </section>
     </main>
   )
 }

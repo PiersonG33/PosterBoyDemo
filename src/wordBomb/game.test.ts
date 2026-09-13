@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPromptOptions,
+  getExampleWords,
   getTurnDurationSeconds,
   MIN_WORDS_PER_PROMPT,
   normalizeWords,
@@ -28,6 +29,16 @@ describe('Custom Word Bomb rules', () => {
     })
     expect(validateGuess('camera', 'ca', allowed, new Set(['camera'])).valid).toBe(false)
     expect(validateGuess('camp', 'me', allowed, new Set()).valid).toBe(false)
+  })
+
+  it('suggests short unused examples after a missed turn', () => {
+    const examples = getExampleWords(
+      'ca',
+      new Set(['camera', 'cat', 'candle', 'camel', 'camp']),
+      new Set(['cat', 'camp']),
+    )
+
+    expect(examples).toEqual(['camel', 'camera', 'candle'])
   })
 
   it('ships with a useful default prompt pool', () => {

@@ -284,6 +284,18 @@ a:focus-visible {
 
 .wb-setup-actions > a:hover { color: var(--wb-cream); }
 
+.wb-back-link {
+  margin-right: auto;
+  padding: 0;
+  border: 0;
+  color: rgb(247 242 232 / 50%);
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wb-back-link:hover { color: var(--wb-cream); }
+
 .wb-sound-button {
   padding: 12px 15px;
   border: 1px solid rgb(247 242 232 / 18%);
@@ -307,6 +319,218 @@ a:focus-visible {
 
 .wb-start-button:hover { transform: translateY(2px); box-shadow: 0 4px 0 #b88900; }
 .wb-start-button span { margin-left: 13px; }
+
+/* Online mode and lobby */
+.wb-mode-card { max-width: 780px; }
+.wb-mode-card > h1 { margin-top: 21px; }
+
+.wb-mode-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+
+.wb-mode-options button {
+  position: relative;
+  display: flex;
+  min-height: 150px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 23px;
+  border: 1px solid rgb(247 242 232 / 17%);
+  border-radius: 13px;
+  color: var(--wb-cream);
+  background: rgb(255 255 255 / 3%);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.wb-mode-options button:hover:not(:disabled) {
+  border-color: var(--wb-yellow);
+  background: rgb(255 201 40 / 6%);
+  transform: translateY(-2px);
+}
+
+.wb-mode-options button:disabled { opacity: .45; cursor: not-allowed; }
+.wb-mode-options button > span { color: var(--wb-orange); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.wb-mode-options button strong { margin-top: 12px; font-size: 22px; }
+.wb-mode-options button small { margin-top: 5px; color: rgb(247 242 232 / 44%); }
+.wb-mode-options button i { position: absolute; right: 22px; bottom: 20px; color: var(--wb-yellow); font-size: 19px; font-style: normal; }
+
+.wb-poster-boy-link {
+  display: inline-block;
+  margin-top: 24px;
+  color: rgb(247 242 232 / 45%);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.wb-poster-boy-link:hover { color: var(--wb-cream); }
+
+.wb-online-card { max-width: 1040px; }
+.wb-online-card > .wb-back-link { display: block; margin-bottom: 24px; }
+
+.wb-online-menu {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 16px;
+}
+
+.wb-online-form { display: flex; flex-direction: column; }
+.wb-online-form .wb-panel__heading { margin-bottom: 21px; }
+
+.wb-online-field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 17px;
+}
+
+.wb-online-field > span {
+  color: rgb(247 242 232 / 48%);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.wb-online-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid rgb(247 242 232 / 14%);
+  border-radius: 7px;
+  outline: 0;
+  color: var(--wb-cream);
+  background: #24211d;
+}
+
+.wb-online-field input:focus { border-color: var(--wb-yellow); }
+.wb-online-field .wb-code-input { color: var(--wb-yellow); font-family: 'Archivo Black', Impact, sans-serif; font-size: 23px; letter-spacing: .18em; text-transform: uppercase; }
+.wb-word-list--online { margin-block: 19px; }
+
+.wb-online-help {
+  margin: 0;
+  color: rgb(247 242 232 / 42%);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.wb-online-primary {
+  width: 100%;
+  margin-top: auto;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--wb-ink);
+  background: var(--wb-yellow);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.wb-online-primary--light { margin-top: 25px; color: var(--wb-cream); background: var(--wb-orange); }
+.wb-online-primary:disabled { opacity: .45; cursor: wait; }
+.wb-online-primary span { float: right; }
+
+.wb-lobby-shell {
+  display: grid;
+  grid-template-rows: 70px 1fr;
+  padding-bottom: 30px;
+}
+
+.wb-live-status {
+  justify-self: center;
+  color: rgb(247 242 232 / 48%);
+  font-size: 10px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.wb-live-status i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #888;
+}
+
+.wb-live-status--live i { background: var(--wb-green); box-shadow: 0 0 9px rgb(159 207 117 / 60%); }
+.wb-live-status--connecting i { background: var(--wb-yellow); animation: wb-spark 700ms ease-in-out infinite alternate; }
+.wb-live-status--offline { color: #ff858d; }
+.wb-live-status--offline i { background: var(--wb-red); }
+
+.wb-leave-button {
+  justify-self: end;
+  padding: 8px 11px;
+  border: 1px solid rgb(247 242 232 / 17%);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.wb-lobby-card {
+  align-self: center;
+  width: min(calc(100% - 30px), 680px);
+  margin: auto;
+  padding: clamp(25px, 5vw, 48px);
+  border: 1px solid rgb(247 242 232 / 17%);
+  border-radius: 18px;
+  background: rgb(31 28 24 / 92%);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 42%);
+}
+
+.wb-lobby-eyebrow { color: var(--wb-orange); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.wb-lobby-card h1 { display: inline-block; margin: 10px 13px 7px 0; font-family: 'Archivo Black', Impact, sans-serif; font-size: clamp(31px, 7vw, 55px); letter-spacing: -.05em; }
+.wb-lobby-card h1 strong { color: var(--wb-yellow); letter-spacing: .08em; }
+.wb-lobby-card > p:not(.wb-setup-error) { margin: 0 0 25px; color: rgb(247 242 232 / 48%); font-size: 12px; }
+
+.wb-copy-code {
+  padding: 7px 10px;
+  border: 1px solid rgb(247 242 232 / 18%);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.wb-copy-code:hover { border-color: var(--wb-yellow); color: var(--wb-yellow); }
+.wb-lobby-players { display: grid; gap: 8px; }
+
+.wb-lobby-players > div {
+  display: grid;
+  grid-template-columns: 34px 1fr auto auto;
+  align-items: center;
+  min-height: 48px;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgb(247 242 232 / 11%);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.wb-lobby-players > div.is-you { border-color: rgb(255 201 40 / 45%); }
+.wb-lobby-players > div.is-empty { opacity: .34; border-style: dashed; }
+.wb-lobby-players span { color: var(--wb-orange); font-size: 10px; }
+.wb-lobby-players small { padding: 3px 5px; border-radius: 3px; color: var(--wb-ink); background: var(--wb-yellow); font-size: 8px; font-weight: 800; }
+
+.wb-lobby-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 24px;
+}
+
+.wb-lobby-actions > span,
+.wb-lobby-actions > strong { color: rgb(247 242 232 / 48%); font-size: 11px; }
+.wb-lobby-actions .wb-start-button:disabled { opacity: .35; transform: none; box-shadow: 0 6px 0 #755b0a; cursor: not-allowed; }
+
+.wb-online-brand { display: flex; align-items: center; gap: 10px; }
+.wb-online-brand > small { padding: 4px 6px; border: 1px solid rgb(247 242 232 / 16%); border-radius: 4px; color: var(--wb-yellow); font-size: 9px; letter-spacing: .09em; }
+.wb-online-header-actions { justify-self: end; display: flex; align-items: center; gap: 13px; }
+.wb-online-header-actions .wb-live-status { justify-self: auto; }
 
 /* Game table */
 .wb-game-shell {
@@ -596,6 +820,8 @@ a:focus-visible {
 }
 
 .wb-guess-row button:hover { background: #ffd95f; }
+.wb-guess-row button:disabled,
+.wb-guess-row input:disabled { opacity: .42; cursor: not-allowed; }
 .wb-guess-row button span { padding-left: 8px; }
 
 .wb-timer { align-self: center; text-align: right; }
@@ -621,6 +847,7 @@ a:focus-visible {
 .wb-winner > span { font-size: 10px; font-weight: 800; letter-spacing: .22em; }
 .wb-winner h2 { margin: 4px 0; font-family: 'Archivo Black', Impact, sans-serif; font-size: clamp(34px, 7vw, 60px); letter-spacing: -.05em; }
 .wb-winner p { margin: 0 0 18px; font-size: 12px; }
+.wb-winner .wb-winner__examples { margin: -7px auto 18px; padding: 7px 10px; border: 1px solid rgb(22 20 18 / 22%); border-radius: 5px; font-weight: 700; }
 .wb-winner > div { display: flex; justify-content: center; gap: 9px; }
 .wb-winner button { padding: 10px 15px; border: 1px solid var(--wb-ink); border-radius: 6px; color: var(--wb-cream); background: var(--wb-ink); font-size: 12px; font-weight: 700; cursor: pointer; }
 .wb-winner button:last-child { color: var(--wb-ink); background: transparent; }
@@ -645,6 +872,9 @@ a:focus-visible {
   .wb-setup-shell { padding: 14px; }
   .wb-setup-card { padding: 25px 18px; border-radius: 16px; }
   .wb-setup-grid { grid-template-columns: 1fr; }
+  .wb-mode-options,
+  .wb-online-menu { grid-template-columns: 1fr; }
+  .wb-mode-options button { min-height: 124px; }
   .wb-word-list { grid-template-columns: minmax(0, 1fr); }
   .wb-word-list__summary,
   .wb-upload,
@@ -661,6 +891,11 @@ a:focus-visible {
   }
 
   .wb-game-header { padding-inline: 14px; }
+  .wb-lobby-shell { grid-template-rows: 58px 1fr; }
+  .wb-lobby-card h1 { display: block; }
+  .wb-copy-code { margin-bottom: 12px; }
+  .wb-online-header-actions .wb-live-status { display: none; }
+  .wb-online-brand > small { display: none; }
   .wb-round span,
   .wb-round span + * { display: none; }
   .wb-arena { width: 100%; aspect-ratio: auto; }

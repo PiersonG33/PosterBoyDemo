@@ -62,6 +62,18 @@ export function validateGuess(
   return { valid: true, word }
 }
 
+export function getExampleWords(
+  prompt: string,
+  allowedWords: ReadonlySet<string>,
+  usedWords: ReadonlySet<string>,
+  limit = 3,
+): string[] {
+  return [...allowedWords]
+    .filter((word) => word.includes(prompt) && !usedWords.has(word))
+    .sort((left, right) => left.length - right.length || left.localeCompare(right))
+    .slice(0, Math.max(0, limit))
+}
+
 export function getTurnDurationSeconds(completedTurns: number): number {
   return Math.max(3.5, 12 - completedTurns * 0.42)
 }
