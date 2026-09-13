@@ -1,5 +1,11 @@
 # Poster Boy demo
 
+<!-- CUSTOM WORD BOMB — BEGIN: remove this section with the isolated game. -->
+## Custom Word Bomb side project
+
+The same GitHub Pages build also publishes the standalone pass-and-play game at `/CustomWordBomb/`. Its source, removal instructions, and word-list format are documented in [`src/wordBomb/README.md`](src/wordBomb/README.md). It does not use Poster Boy's components, styles, Supabase connection, or board state.
+<!-- CUSTOM WORD BOMB — END -->
+
 Poster Boy is a shared corkboard where visitors spend a limited supply of actions to create, pin, unpin, and remove sticky notes.
 
 ## Current milestone
